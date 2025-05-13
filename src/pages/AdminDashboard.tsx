@@ -619,8 +619,8 @@ const AdminDashboard: React.FC = () => {
       });
       // Espaço e título para sugestões gerais
       let finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY : 20;
-      doc.setFontSize(12);
-      doc.text('Sugestões dos pacientes', 14, finalY + 10);
+      (doc as any).setFontSize(12);
+      (doc as any).text('Sugestões dos pacientes', 14, finalY + 10);
       // Sugestões gerais (todas)
       const suggestionTable = allSuggestions.map(s => ([
         String(new Date(s.createdAt).toLocaleString('pt-BR')),
@@ -637,9 +637,9 @@ const AdminDashboard: React.FC = () => {
       const nomeUsuario = user.name || user.email || 'Desconhecido';
       const pageCount = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(10);
-        doc.text(`USUÁRIO: ${nomeUsuario}`, 14, doc.internal.pageSize.height - 10);
+        (doc as any).setPage(i);
+        (doc as any).setFontSize(10);
+        (doc as any).text(`USUÁRIO: ${nomeUsuario}`, 14, (doc as any).internal.pageSize.height - 10);
       }
       doc.save('Relatorio_Feedbacks_e_Sugestoes.pdf');
       setExportSuccess('Exportação para PDF concluída!');
