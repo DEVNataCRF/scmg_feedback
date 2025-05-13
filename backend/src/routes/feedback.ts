@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { FeedbackController } from '../controllers/FeedbackController';
 import { authMiddleware, adminMiddleware } from '../middlewares/auth';
-import { body } from 'express-validator';
+import * as expressValidator from 'express-validator';
+const { body } = expressValidator;
 
 const router = Router();
 const feedbackController = new FeedbackController();

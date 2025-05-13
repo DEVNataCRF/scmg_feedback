@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { SuggestionController } from '../controllers/SuggestionController';
 import { authMiddleware, adminMiddleware } from '../middlewares/auth';
-import { body } from 'express-validator';
+import * as expressValidator from 'express-validator';
+const { body } = expressValidator;
 
 const router = Router();
 const suggestionController = new SuggestionController();
