@@ -618,7 +618,7 @@ const AdminDashboard: React.FC = () => {
         }
       });
       // Espaço e título para sugestões gerais
-      let finalY = (doc).lastAutoTable ? (doc).lastAutoTable.finalY : 20;
+      let finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY : 20;
       doc.setFontSize(12);
       doc.text('Sugestões dos pacientes', 14, finalY + 10);
       // Sugestões gerais (todas)
@@ -635,7 +635,7 @@ const AdminDashboard: React.FC = () => {
       // Adicionar rodapé com usuário responsável
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const nomeUsuario = user.name || user.email || 'Desconhecido';
-      const pageCount = doc.internal.getNumberOfPages();
+      const pageCount = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(10);
