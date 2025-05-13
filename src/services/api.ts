@@ -1,0 +1,87 @@
+import { Feedback } from '../contexts/FeedBackContext';
+
+export interface FeedbacksResponse {
+  feedbacks: Feedback[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+function getToken() {
+  const token = localStorage.getItem('token') || '';
+  if (!token) {
+    console.warn('Token ausente no localStorage!');
+  } else {
+    console.info('Token enviado:', token);
+  }
+  return token;
+}
+
+export const getFeedbacks = async (): Promise<FeedbacksResponse> => {
+  const token = getToken();
+  const response = await fetch('/api/feedback', {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.message || `Erro HTTP ${response.status}`);
+  }
+  return response.json();
+};
+
+export const createFeedback = async (
+  department: string,
+  rating: string
+): Promise<Feedback> => {
+  const token = getToken();
+  const response = await fetch('/api/feedback', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ department, rating }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.message || `Erro HTTP ${response.status}`);
+  }
+  return response.json();
+};
+
+export const createSuggestion = async (suggestion: string): Promise<any> => {
+  const token = getToken();
+  const response = await fetch('/api/suggestion', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ suggestion }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.message || `Erro HTTP ${response.status}`);
+  }
+  return response.json();
+};
+
+export const getSuggestions = async (): Promise<any[]> => {
+  const token = getToken();
+  const response = await fetch('/api/suggestion', {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.message || `Erro HTTP ${response.status}`);
+  }
+  const data = await response.json();
+  return data.suggestions || [];
+}; 
