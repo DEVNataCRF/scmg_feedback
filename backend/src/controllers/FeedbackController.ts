@@ -27,7 +27,7 @@ export class FeedbackController {
 
       await feedbackRepository.save(feedback);
 
-      logger.info('Feedback salvo com sucesso', { feedbackId: (feedback as Feedback).id });
+      logger.info('Feedback salvo com sucesso', { feedbackId: (feedback as unknown as Feedback).id });
 
       return res.status(201).json(feedback);
     } catch (error) {
