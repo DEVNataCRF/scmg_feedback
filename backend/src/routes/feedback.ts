@@ -8,7 +8,6 @@ const feedbackController = new FeedbackController();
 
 router.post(
   '/',
-  authMiddleware,
   [
     body('department').isString().trim().escape().notEmpty().withMessage('Departamento é obrigatório'),
     body('rating').isString().trim().escape().notEmpty().withMessage('Avaliação é obrigatória'),

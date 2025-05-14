@@ -11,7 +11,10 @@ import logger from './config/logger';
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: ['https://scmg-feedback.onrender.com'],
+  credentials: true,
+}));
 app.use(express.json());
 
 // Rotas
