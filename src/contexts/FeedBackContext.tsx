@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Rating } from '../types/rating';
 import { getFeedbacks, createFeedback } from '../services/api';
+import { useLocation } from 'react-router-dom';
 
 export interface Feedback {
   comment: any;
@@ -24,6 +25,7 @@ const FeedbackContext = createContext<FeedbackContextData>({} as FeedbackContext
 export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
 
   // Função para buscar feedbacks do backend
   const fetchFeedbacks = async () => {
@@ -39,8 +41,10 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   useEffect(() => {
-    fetchFeedbacks();
-  }, []);
+    if (location.pathname.startsWith('/admin')) {
+      fetchFeedbacks();
+    }
+  }, [location.pathname]);
 
   const addFeedback = async (department: string, rating: Rating) => {
     setLoading(true);
