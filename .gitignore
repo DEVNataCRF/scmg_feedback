@@ -10,7 +10,7 @@ yarn-error.log*
 
 # Build
 build/
-dist/
+# dist/
 
 # Coverage
 coverage/
