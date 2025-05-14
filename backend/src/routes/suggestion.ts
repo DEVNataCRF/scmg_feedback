@@ -8,7 +8,6 @@ const suggestionController = new SuggestionController();
 
 router.post(
   '/',
-  authMiddleware,
   [body('suggestion').isString().trim().escape().notEmpty().withMessage('Sugestão é obrigatória')],
   suggestionController.create
 );
