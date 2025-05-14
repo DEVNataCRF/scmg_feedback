@@ -18,9 +18,11 @@ function getToken() {
   return token;
 }
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 export const getFeedbacks = async (): Promise<FeedbacksResponse> => {
   const token = getToken();
-  const response = await fetch('/api/feedback', {
+  const response = await fetch(`${API_URL}/api/feedback`, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -38,7 +40,7 @@ export const createFeedback = async (
   rating: string
 ): Promise<Feedback> => {
   const token = getToken();
-  const response = await fetch('/api/feedback', {
+  const response = await fetch(`${API_URL}/api/feedback`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -55,7 +57,7 @@ export const createFeedback = async (
 
 export const createSuggestion = async (suggestion: string): Promise<any> => {
   const token = getToken();
-  const response = await fetch('/api/suggestion', {
+  const response = await fetch(`${API_URL}/api/suggestion`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -72,7 +74,7 @@ export const createSuggestion = async (suggestion: string): Promise<any> => {
 
 export const getSuggestions = async (): Promise<any[]> => {
   const token = getToken();
-  const response = await fetch('/api/suggestion', {
+  const response = await fetch(`${API_URL}/api/suggestion`, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
