@@ -29,6 +29,11 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Função para buscar feedbacks do backend
   const fetchFeedbacks = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('Token não encontrado. Ignorando fetch de feedbacks.');
+      return;
+    }
     setLoading(true);
     try {
       const data = await getFeedbacks();

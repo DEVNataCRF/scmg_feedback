@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { useFeedback } from '../contexts/FeedBackContext';
 import type { Feedback } from '../contexts/FeedBackContext';
+import { Navigate } from 'react-router-dom';
 
 const Container = styled.div`
   padding: 40px;
@@ -126,6 +127,9 @@ const ratingLabels = {
 };
 
 const Admin: React.FC = () => {
+  const token = localStorage.getItem('token');
+  if (!token) return <Navigate to="/admin/login" />;
+
   const { feedbacks } = useFeedback();
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [ratingFilter, setRatingFilter] = useState<string>('all');
