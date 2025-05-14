@@ -16,11 +16,14 @@ export class FeedbackController {
 
       const feedbackRepository = AppDataSource.getRepository(Feedback);
 
-      const feedback = feedbackRepository.create({
+      const feedbackData: any = {
         department,
         rating,
-        user: { id: userId },
-      });
+      };
+      if (userId) {
+        feedbackData.user = { id: userId };
+      }
+      const feedback = feedbackRepository.create(feedbackData);
 
       await feedbackRepository.save(feedback);
 
