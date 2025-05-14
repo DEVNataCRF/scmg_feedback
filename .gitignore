@@ -20,7 +20,7 @@ backups/
 
 # Ambiente
 .env
-.env.*
+# .env.*
 
 # Sistema
 .DS_Store
