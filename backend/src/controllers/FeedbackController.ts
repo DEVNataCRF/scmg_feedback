@@ -6,7 +6,7 @@ import logger from '../config/logger';
 export class FeedbackController {
   async create(req: Request, res: Response) {
     try {
-      const { department, rating } = req.body;
+      const { department, rating, suggestion } = req.body;
       if (!department || !rating) {
         return res.status(400).json({ error: 'Departamento e avaliação são obrigatórios.' });
       }
@@ -22,6 +22,9 @@ export class FeedbackController {
       };
       if (userId) {
         feedbackData.user = { id: userId };
+      }
+      if (suggestion) {
+        feedbackData.suggestion = suggestion;
       }
       const feedback = feedbackRepository.create(feedbackData);
 
@@ -51,6 +54,7 @@ export class FeedbackController {
           'feedback.department',
           'feedback.rating',
           'feedback.createdAt',
+          'feedback.suggestion',
           'user.id',
           'user.name',
         ]);

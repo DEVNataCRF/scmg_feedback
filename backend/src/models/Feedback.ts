@@ -32,4 +32,7 @@ export class Feedback {
   @Column({ nullable: true })
   @Index()
   user_id?: string;
+
+  @Column({ nullable: true, type: 'text' })
+  suggestion?: string;
 } 
