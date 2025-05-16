@@ -30,14 +30,21 @@ export class FeedbackController {
         feedbackData.recomendacao = recomendacao;
       }
       const feedback = feedbackRepository.create(feedbackData);
-      const savedFeedback = await feedbackRepository.save(feedback) as unknown as Feedback;
+      const savedFeedback = await feedbackRepository.save(feedback);
+
+      if (Array.isArray(savedFeedback)) {
+        logger.error('Erro: save retornou um array, mas deveria ser um objeto único!');
+        return res.status(500).json({ error: 'Erro interno ao salvar feedback' });
+      }
+
+      const feedbackObj = savedFeedback as Feedback;
 
       logger.info('Feedback salvo com sucesso', {
-        feedbackId: savedFeedback.id,
-        recomendacao: savedFeedback.recomendacao,
+        feedbackId: feedbackObj.id,
+        recomendacao: feedbackObj.recomendacao,
       });
 
-      return res.status(201).json(savedFeedback);
+      return res.status(201).json(feedbackObj);
     } catch (error) {
       logger.error('Erro ao criar feedback', { error });
       return res.status(500).json({ error: 'Erro interno do servidor' });
