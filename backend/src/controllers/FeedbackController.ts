@@ -30,12 +30,14 @@ export class FeedbackController {
         feedbackData.recomendacao = recomendacao;
       }
       const feedback = feedbackRepository.create(feedbackData);
+      const savedFeedback = await feedbackRepository.save(feedback) as unknown as Feedback;
 
-      await feedbackRepository.save(feedback);
+      logger.info('Feedback salvo com sucesso', {
+        feedbackId: savedFeedback.id,
+        recomendacao: savedFeedback.recomendacao,
+      });
 
-      logger.info('Feedback salvo com sucesso', { feedbackId: (feedback as unknown as Feedback).id, recomendacao: feedback.recomendacao });
-
-      return res.status(201).json(feedback);
+      return res.status(201).json(savedFeedback);
     } catch (error) {
       logger.error('Erro ao criar feedback', { error });
       return res.status(500).json({ error: 'Erro interno do servidor' });
