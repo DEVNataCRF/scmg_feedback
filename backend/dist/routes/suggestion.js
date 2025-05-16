@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const SuggestionController_1 = require("../controllers/SuggestionController");
+const auth_1 = require("../middlewares/auth");
+const { body } = require('express-validator');
+const router = (0, express_1.Router)();
+const suggestionController = new SuggestionController_1.SuggestionController();
+router.post('/', [body('suggestion').isString().trim().escape().notEmpty().withMessage('Sugestão é obrigatória')], suggestionController.create);
+router.get('/', auth_1.authMiddleware, suggestionController.list);
+exports.default = router;
