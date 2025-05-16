@@ -1,5 +1,6 @@
-# Node
+# Node modules
 node_modules/
+**/node_modules/
 
 # Logs
 logs/
@@ -8,9 +9,24 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Build
+# Build outputs
+#dist/
 build/
-# dist/
+**/dist/
+**/build/
+
+# Arquivos JS gerados a partir de TS no src/
+src/**/*.js
+frontend/src/**/*.js
+backend/src/**/*.js
+
+# Build do frontend
+frontend/dist/
+frontend/build/
+
+# Build do backend
+backend/dist/
+backend/build/
 
 # Coverage
 coverage/
