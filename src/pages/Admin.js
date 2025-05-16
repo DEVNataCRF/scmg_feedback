@@ -2,6 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { useFeedback } from '../contexts/FeedBackContext';
+import { Navigate } from 'react-router-dom';
 const Container = styled.div `
   padding: 40px;
   max-width: 1200px;
@@ -109,6 +110,9 @@ const ratingLabels = {
     poor: 'Ruim'
 };
 const Admin = () => {
+    const token = localStorage.getItem('token');
+    if (!token)
+        return _jsx(Navigate, { to: "/admin/login" });
     const { feedbacks } = useFeedback();
     const [departmentFilter, setDepartmentFilter] = useState('all');
     const [ratingFilter, setRatingFilter] = useState('all');

@@ -21,9 +21,14 @@ const Container = styled.div `
   justify-content: center;
 `;
 const Logo = styled.img `
-  width: 180px;
+  width: 220px;
+  max-width: 90vw;
   margin-top: 10px;
   margin-bottom: 18px;
+
+  @media (max-width: 480px) {
+    width: 140px;
+  }
 `;
 const Title = styled.h2 `
   text-align: center;

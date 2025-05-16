@@ -1,12 +1,19 @@
 import { jsx as _jsx } from "react/jsx-runtime";
 import { createContext, useContext, useState, useEffect } from 'react';
 import { getFeedbacks, createFeedback } from '../services/api';
+import { useLocation } from 'react-router-dom';
 const FeedbackContext = createContext({});
 export const FeedbackProvider = ({ children }) => {
     const [feedbacks, setFeedbacks] = useState([]);
     const [loading, setLoading] = useState(false);
+    const location = useLocation();
     // Função para buscar feedbacks do backend
     const fetchFeedbacks = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.warn('Token não encontrado. Ignorando fetch de feedbacks.');
+            return;
+        }
         setLoading(true);
         try {
             const data = await getFeedbacks();
@@ -20,8 +27,10 @@ export const FeedbackProvider = ({ children }) => {
         }
     };
     useEffect(() => {
-        fetchFeedbacks();
-    }, []);
+        if (location.pathname.startsWith('/admin')) {
+            fetchFeedbacks();
+        }
+    }, [location.pathname]);
     const addFeedback = async (department, rating) => {
         setLoading(true);
         try {

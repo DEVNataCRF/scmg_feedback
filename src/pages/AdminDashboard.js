@@ -6,10 +6,11 @@ import { departments } from '../../backend/src/constants/department';
 import * as ExcelJS from 'exceljs';
 import Papa from 'papaparse';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 import { useNavigate } from 'react-router-dom';
 import { getSuggestions } from '../services/api';
 import { FiUser, FiMail, FiLock, FiX } from 'react-icons/fi';
+import { saveAs } from 'file-saver';
 const GlobalStyle = createGlobalStyle `
   body {
     font-family: 'Inter', sans-serif;
@@ -370,7 +371,9 @@ const AdminDashboard = () => {
             const created = new Date(f.createdAt).getTime();
             const matchesStart = !startDate || created >= new Date(startDate).setHours(0, 0, 0, 0);
             const matchesEnd = !endDate || created <= new Date(endDate).setHours(23, 59, 59, 999);
-            return matchesDepartment && matchesRating && matchesStart && matchesEnd;
+            // Ignorar sugestões gerais no dashboard
+            const isSuggestionGeral = f.department === 'geral';
+            return matchesDepartment && matchesRating && matchesStart && matchesEnd && !isSuggestionGeral;
         });
     }, [feedbacks, departmentFilter, ratingFilter, startDate, endDate]);
     // Função para obter o primeiro e último dia do mês selecionado
@@ -410,7 +413,7 @@ const AdminDashboard = () => {
     };
     // Unir sugestões do modelo Feedback e Suggestion
     const allSuggestions = [
-        ...filteredFeedbacks
+        ...feedbacks
             .filter(f => f.suggestion && f.suggestion.trim() !== '')
             .map(f => ({
             createdAt: f.createdAt,
@@ -421,174 +424,261 @@ const AdminDashboard = () => {
             suggestion: s.suggestion
         }))
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    // Função otimizada para exportar todos os feedbacks em lotes
+    // Calcular média de recomendação (considerando todos os feedbacks, inclusive 'geral')
+    const recomendacoes = feedbacks
+        .map(f => typeof f.recomendacao === 'number' ? f.recomendacao : null)
+        .filter(r => r !== null);
+    const mediaRecomendacao = recomendacoes.length
+        ? recomendacoes.reduce((a, b) => a + b, 0) / recomendacoes.length
+        : null;
+    function getEmojiSummary(media) {
+        if (media === null)
+            return { emoji: '🤔', label: 'Sem dados' };
+        if (media <= 2)
+            return { emoji: '😡', label: 'Muito insatisfeito' };
+        if (media <= 4)
+            return { emoji: '😕', label: 'Insatisfeito' };
+        if (media <= 6)
+            return { emoji: '😐', label: 'Neutro' };
+        if (media <= 8)
+            return { emoji: '🙂', label: 'Satisfeito' };
+        return { emoji: '😄', label: 'Muito satisfeito' };
+    }
+    const emojiSummary = getEmojiSummary(mediaRecomendacao);
+    const resumoSentimento = `${emojiSummary.emoji}  Média geral de recomendação: ${mediaRecomendacao ? mediaRecomendacao.toFixed(1) : '--'} / 10\nSentimento predominante: ${emojiSummary.label}`;
+    // Substituir a função exportarTodosFeedbacksExcel pelo código fornecido pelo usuário, mantendo a lógica de resumo, feedbacks e sugestões, e garantindo que utilize os dados e variáveis do dashboard.
     async function exportarTodosFeedbacksExcel() {
         setLoadingExport(true);
         setExportError('');
         setExportSuccess('');
         try {
-            let page = 1;
-            const limit = 500;
-            let todosFeedbacks = [];
-            let totalPages = 1;
-            const token = localStorage.getItem('token');
-            do {
-                const res = await fetch(`/api/feedback?page=${page}&limit=${limit}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                const data = await res.json();
-                todosFeedbacks = todosFeedbacks.concat(data.feedbacks);
-                totalPages = data.totalPages;
-                page++;
-            } while (page <= totalPages);
-            // Criar uma nova planilha
+            // Criando a instância do ExcelJS Workbook
             const workbook = new ExcelJS.Workbook();
-            const worksheet = workbook.addWorksheet('Relatório');
-            // Definir larguras das colunas
-            worksheet.columns = [
-                { header: 'Data', key: 'data', width: 20 },
-                { header: 'Departamento', key: 'departamento', width: 15 },
-                { header: 'Avaliação', key: 'avaliacao', width: 80 }
+            workbook.creator = 'SCMG';
+            workbook.created = new Date();
+            workbook.modified = new Date();
+            // =============================
+            // ABA DE RESUMO
+            // =============================
+            const resumoSheet = workbook.addWorksheet('Resumo');
+            // Cabeçalho do Resumo
+            resumoSheet.columns = [
+                { header: 'Data de Geração', key: 'data', width: 20 },
+                { header: 'Sentimento', key: 'sentimento', width: 30 },
+                { header: 'Média de Recomendação', key: 'media', width: 30 },
             ];
-            // Estilizar cabeçalho
-            worksheet.getRow(1).font = { bold: true };
-            worksheet.getRow(1).fill = {
+            resumoSheet.getRow(1).font = { bold: true };
+            resumoSheet.getRow(1).fill = {
                 type: 'pattern',
                 pattern: 'solid',
-                fgColor: { argb: 'FF2F855A' }
+                fgColor: { argb: 'FF4CAF50' },
+                bgColor: { argb: 'FF4CAF50' },
             };
-            worksheet.getRow(1).font = { color: { argb: 'FFFFFFFF' } };
-            // Adicionar dados dos feedbacks
-            todosFeedbacks.forEach(feedback => {
-                worksheet.addRow({
-                    data: new Date(feedback.createdAt).toLocaleString('pt-BR'),
-                    departamento: departments.find(d => d.id === feedback.department)?.name || feedback.department,
-                    avaliacao: feedback.rating
-                });
+            resumoSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' } };
+            // Adicionando os dados do resumo
+            resumoSheet.addRow({
+                data: new Date().toLocaleString('pt-BR'),
+                sentimento: emojiSummary.label,
+                media: mediaRecomendacao ? mediaRecomendacao.toFixed(1) : 'Sem dados',
             });
-            // Adicionar linha em branco
-            worksheet.addRow({});
-            // Adicionar cabeçalho para sugestões
-            const suggestionHeaderRow = worksheet.addRow({
-                data: '',
-                departamento: '',
-                avaliacao: 'Sugestões Gerais'
-            });
-            suggestionHeaderRow.font = { bold: true };
-            suggestionHeaderRow.fill = {
+            // =============================
+            // ABA DE RECOMENDAÇÕES
+            // =============================
+            const recomendacaoSheet = workbook.addWorksheet('Recomendações');
+            recomendacaoSheet.columns = [
+                { header: 'Data/Hora', key: 'data', width: 25 },
+                { header: 'Nota', key: 'nota', width: 10 },
+                { header: 'Emoji', key: 'emoji', width: 10 }
+            ];
+            recomendacaoSheet.getRow(1).font = { bold: true };
+            recomendacaoSheet.getRow(1).fill = {
                 type: 'pattern',
                 pattern: 'solid',
-                fgColor: { argb: 'FF3182CE' }
+                fgColor: { argb: 'FF4CAF50' },
+                bgColor: { argb: 'FF4CAF50' },
             };
-            suggestionHeaderRow.font = { color: { argb: 'FFFFFFFF' } };
-            // Adicionar sugestões
-            allSuggestions.forEach(s => {
-                worksheet.addRow({
-                    data: new Date(s.createdAt).toLocaleString('pt-BR'),
-                    departamento: '',
-                    avaliacao: s.suggestion
+            recomendacaoSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' } };
+            // Adicionando as recomendações individuais com data/hora
+            feedbacks
+                .filter(f => typeof f.recomendacao === 'number')
+                .forEach(f => {
+                recomendacaoSheet.addRow({
+                    data: new Date(f.createdAt).toLocaleString('pt-BR'),
+                    nota: f.recomendacao,
+                    emoji: getEmojiSummary(typeof f.recomendacao === 'number' ? f.recomendacao : null).emoji
                 });
             });
-            // Estilizar células
-            worksheet.eachRow((row, rowNumber) => {
-                row.eachCell((cell) => {
-                    cell.border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' }
-                    };
-                    cell.alignment = { vertical: 'middle', wrapText: true };
+            // =============================
+            // ABA DE FEEDBACKS
+            // =============================
+            const feedbackSheet = workbook.addWorksheet('Feedbacks');
+            feedbackSheet.columns = [
+                { header: 'Data', key: 'date', width: 25 },
+                { header: 'Departamento', key: 'department', width: 30 },
+                { header: 'Avaliação', key: 'rating', width: 20 }
+            ];
+            feedbackSheet.getRow(1).font = { bold: true };
+            feedbackSheet.getRow(1).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF4CAF50' },
+                bgColor: { argb: 'FF4CAF50' },
+            };
+            feedbackSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' } };
+            // Adicionando os dados
+            filteredFeedbacks.forEach((feedback) => {
+                feedbackSheet.addRow({
+                    date: new Date(feedback.createdAt).toLocaleString('pt-BR'),
+                    department: departments.find(d => d.id === feedback.department)?.name || feedback.department,
+                    rating: feedback.rating,
                 });
             });
-            // Gerar arquivo
+            // =============================
+            // ABA DE SUGESTÕES
+            // =============================
+            const suggestionSheet = workbook.addWorksheet('Sugestões');
+            suggestionSheet.columns = [
+                { header: 'Data', key: 'date', width: 25 },
+                { header: 'Sugestão', key: 'suggestion', width: 50 }
+            ];
+            suggestionSheet.getRow(1).font = { bold: true };
+            suggestionSheet.getRow(1).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF4CAF50' },
+                bgColor: { argb: 'FF4CAF50' },
+            };
+            suggestionSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' } };
+            // Adicionando os dados
+            allSuggestions.forEach((suggestion) => {
+                suggestionSheet.addRow({
+                    date: new Date(suggestion.createdAt).toLocaleString('pt-BR'),
+                    suggestion: suggestion.suggestion,
+                });
+            });
+            // =============================
+            // GERAR O ARQUIVO
+            // =============================
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'Relatorio_Feedbacks_e_Sugestoes.xlsx';
-            link.click();
-            window.URL.revokeObjectURL(url);
+            // Nome do arquivo
+            const formattedDate = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+            const fileName = `SCMG - RELATÓRIO DE FEEDBACKS E SUGESTÕES ${formattedDate}.xlsx`;
+            saveAs(blob, fileName);
             setExportSuccess('Exportação para Excel concluída!');
         }
         catch (err) {
-            setExportError('Erro ao exportar para Excel. Tente novamente.');
+            console.error('Erro ao exportar Excel:', err);
+            setExportError('Erro ao exportar Excel.');
         }
         setLoadingExport(false);
     }
-    // Função otimizada para exportar todos os feedbacks em lotes para PDF
+    // Substituir a função exportarTodosFeedbacksPDF para gerar o PDF no frontend, usando jsPDF e autoTable, com layout bonito, igual ao exemplo do usuário. Não fazer requisição ao backend para exportação do PDF.
     async function exportarTodosFeedbacksPDF() {
         setLoadingExportPDF(true);
         setExportError('');
         setExportSuccess('');
         try {
-            let page = 1;
-            const limit = 500;
-            let todosFeedbacks = [];
-            let totalPages = 1;
-            const token = localStorage.getItem('token');
-            do {
-                const res = await fetch(`/api/feedback?page=${page}&limit=${limit}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                const data = await res.json();
-                todosFeedbacks = todosFeedbacks.concat(data.feedbacks);
-                totalPages = data.totalPages;
-                page++;
-            } while (page <= totalPages);
+            // Ordenar feedbacks e sugestões por data decrescente (mais recente primeiro)
+            const feedbacksOrdenados = [...filteredFeedbacks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            const sugestoesOrdenadas = [...allSuggestions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            const getBadgeColor = (status) => {
+                if (status === 'Excelente')
+                    return [76, 175, 80]; // verde
+                if (status === 'Bom')
+                    return [33, 150, 243]; // azul
+                if (status === 'Regular')
+                    return [255, 193, 7]; // amarelo
+                return [244, 67, 54]; // vermelho
+            };
+            // Gera o nome do arquivo com a data atual formatada
+            const formattedDate = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+            const fileName = `SCMG - RELATÓRIO DE FEEDBACKS E SUGESTÕES ${formattedDate}.pdf`;
             const doc = new jsPDF();
-            // Avaliações
-            const feedbackTable = todosFeedbacks.map(feedback => ([
-                ((feedback.createdAt && !isNaN(new Date(feedback.createdAt).getTime())
-                    ? new Date(feedback.createdAt).toLocaleString('pt-BR') : '') || '') + '',
-                (departments.find(d => d.id === feedback.department)?.name || feedback.department || '') + '',
-                (feedback.rating || '') + ''
-            ]));
-            autoTable(doc, {
-                head: [['Data', 'Departamento', 'Avaliação']],
-                body: feedbackTable,
-                startY: 10,
-                margin: { top: 10 },
-                styles: { fontSize: 10 },
-                didDrawPage: (data) => {
-                    doc.setFontSize(14);
-                    doc.text('Relatório de Feedbacks', data.settings.margin.left, 6);
-                }
-            });
-            // Espaço e título para sugestões gerais
-            let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : 20;
+            doc.setFontSize(22);
+            doc.setTextColor(76, 175, 80); // #4caf50
+            doc.text('Relatório de Feedbacks e Sugestões', 105, 18, { align: 'center' });
             doc.setFontSize(12);
-            doc.text('Sugestões dos pacientes', 14, finalY + 10);
-            // Sugestões gerais (todas)
-            const suggestionTable = allSuggestions.map(s => ([
-                String(new Date(s.createdAt).toLocaleString('pt-BR')),
-                String(s.suggestion)
-            ]));
-            autoTable(doc, {
-                head: [['Data', 'Sugestão']],
-                body: suggestionTable,
-                startY: finalY + 15,
-                styles: { fontSize: 10 }
+            doc.setTextColor(120, 144, 156); // #78909c
+            doc.text(`Data de Geração: ${new Date().toLocaleDateString('pt-BR')}`, 105, 26, { align: 'center' });
+            // No resumo superior, mostrar apenas o texto
+            const resumoTexto = `Média geral de recomendação: ${mediaRecomendacao ? mediaRecomendacao.toFixed(1) : '--'} / 10\nSentimento predominante: ${emojiSummary.label}`;
+            doc.setFontSize(14);
+            doc.setTextColor(44, 62, 80);
+            doc.text(resumoTexto, 105, 34, { align: 'center' });
+            // Feedbacks dos Pacientes
+            doc.setTextColor(44, 62, 80); // #2d3e50
+            doc.setFontSize(16);
+            doc.text('Feedbacks dos Pacientes', 14, 50);
+            doc.autoTable({
+                startY: 56,
+                head: [["Data", "Departamento", "Avaliação"]],
+                body: feedbacksOrdenados.map(f => [
+                    new Date(f.createdAt).toLocaleString('pt-BR'),
+                    departments.find(d => d.id === f.department)?.name || f.department,
+                    f.rating
+                ]),
+                headStyles: { fillColor: [76, 175, 80], textColor: 255, fontStyle: 'bold' },
+                bodyStyles: { fontSize: 11 },
+                styles: { halign: 'left' },
+                didParseCell: function (data) {
+                    if (data.section === 'body' && data.column.index === 2) {
+                        const valor = data.cell.raw;
+                        const color = getBadgeColor(valor);
+                        data.cell.styles.fillColor = color;
+                        data.cell.styles.textColor = 255;
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                },
             });
-            // Adicionar rodapé com usuário responsável
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const nomeUsuario = user.name || user.email || 'Desconhecido';
-            const pageCount = doc.internal.getNumberOfPages();
-            for (let i = 1; i <= pageCount; i++) {
-                doc.setPage(i);
-                doc.setFontSize(10);
-                doc.text(`USUÁRIO: ${nomeUsuario}`, 14, doc.internal.pageSize.height - 10);
-            }
-            doc.save('Relatorio_Feedbacks_e_Sugestoes.pdf');
+            // Sugestões dos Pacientes
+            let y = doc.lastAutoTable.finalY + 10;
+            doc.setFontSize(16);
+            doc.text('Sugestões dos Pacientes', 14, y);
+            doc.autoTable({
+                startY: y + 5,
+                head: [["Data", "Sugestão"]],
+                body: sugestoesOrdenadas.map(s => [
+                    new Date(s.createdAt).toLocaleString('pt-BR'),
+                    s.suggestion
+                ]),
+                headStyles: { fillColor: [76, 175, 80], textColor: 255, fontStyle: 'bold' },
+                bodyStyles: { fontSize: 11 },
+                styles: { halign: 'left' },
+            });
+            // =============================
+            // Recomendações dos Pacientes (no final do PDF)
+            // =============================
+            let yRecomendacao = doc.lastAutoTable.finalY + 15;
+            doc.setFontSize(16);
+            doc.setTextColor(44, 62, 80);
+            doc.text('Recomendações dos Pacientes', 14, yRecomendacao);
+            doc.setFontSize(12);
+            yRecomendacao += 6;
+            recomendacoes.forEach((nota) => {
+                let texto = '';
+                if (nota >= 0 && nota <= 2)
+                    texto = 'Muito insatisfeito';
+                else if (nota >= 3 && nota <= 4)
+                    texto = 'Insatisfeito';
+                else if (nota >= 5 && nota <= 6)
+                    texto = 'Neutro';
+                else if (nota >= 7 && nota <= 8)
+                    texto = 'Satisfeito';
+                else if (nota >= 9 && nota <= 10)
+                    texto = 'Muito satisfeito';
+                else
+                    texto = 'Sem dados';
+                doc.text(`Nota: ${nota}   ${texto}`, 16, yRecomendacao);
+                yRecomendacao += 8;
+            });
+            // Nome do arquivo com formato atualizado
+            doc.save(fileName);
             setExportSuccess('Exportação para PDF concluída!');
         }
         catch (err) {
-            setExportError('Erro ao exportar para PDF. Tente novamente.');
+            console.error('Erro ao exportar PDF:', err);
+            setExportError('Erro ao exportar PDF.');
         }
         setLoadingExportPDF(false);
     }
@@ -787,7 +877,17 @@ const AdminDashboard = () => {
                                     cursor: 'pointer',
                                     fontSize: '1rem',
                                     marginLeft: 0
-                                }, children: "Sair" })] })] }), showRegister && (_jsx(ModalOverlay, { children: _jsxs(ModalContent, { ref: modalRef, role: "dialog", "aria-modal": "true", tabIndex: -1, children: [_jsx(CloseButton, { onClick: () => { setShowRegister(false); setRegisterMsg(''); }, title: "Fechar", children: _jsx(FiX, {}) }), _jsx(ModalTitle, { children: "Cadastrar Novo Usu\u00E1rio" }), _jsxs("form", { onSubmit: handleRegister, children: [_jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiUser, {}) }), _jsx(Input, { type: "text", placeholder: "Nome", value: nomeNovo, onChange: e => setNomeNovo(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiMail, {}) }), _jsx(Input, { type: "email", placeholder: "E-mail", value: emailNovo, onChange: e => setEmailNovo(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Senha", value: senhaNovo, onChange: e => setSenhaNovo(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Confirmar senha", value: confirmaSenhaNovo, onChange: e => setConfirmaSenhaNovo(e.target.value), required: true })] }), _jsxs(ButtonGroup, { children: [_jsx(Button, { type: "submit", variant: "primary", disabled: registerLoading, children: registerLoading ? 'Cadastrando...' : 'Cadastrar' }), _jsx(Button, { type: "button", variant: "secondary", onClick: () => { setShowRegister(false); setRegisterMsg(''); }, children: "Cancelar" })] }), registerMsg && (_jsx(Message, { type: registerMsg.includes('sucesso') ? 'success' : 'error', children: registerMsg }))] })] }) })), showChangeUserPassword && (_jsx(ModalOverlay, { children: _jsxs(ModalContent, { ref: modalRef, role: "dialog", "aria-modal": "true", tabIndex: -1, children: [_jsx(CloseButton, { onClick: () => { setShowChangeUserPassword(false); setChangeUserMsg(''); }, title: "Fechar", children: _jsx(FiX, {}) }), _jsx(ModalTitle, { children: "Alterar senha de usu\u00E1rio" }), _jsxs("form", { onSubmit: handleChangeUserPassword, children: [_jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiMail, {}) }), _jsx(Input, { type: "email", placeholder: "E-mail do usu\u00E1rio", value: changeUserEmail, onChange: e => setChangeUserEmail(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Nova senha", value: changeUserNewPassword, onChange: e => setChangeUserNewPassword(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Confirmar nova senha", value: changeUserConfirmPassword, onChange: e => setChangeUserConfirmPassword(e.target.value), required: true })] }), _jsxs(ButtonGroup, { children: [_jsx(Button, { type: "submit", variant: "primary", disabled: changeUserLoading, children: changeUserLoading ? 'Alterando...' : 'Alterar senha' }), _jsx(Button, { type: "button", variant: "secondary", onClick: () => { setShowChangeUserPassword(false); setChangeUserMsg(''); }, children: "Cancelar" })] }), changeUserMsg && (_jsx(Message, { type: changeUserMsg.includes('sucesso') ? 'success' : 'error', children: changeUserMsg }))] })] }) })), _jsxs(ExportButtonsContainer, { children: [_jsx(ExportButton, { "aria-label": "Exportar para Excel", onClick: () => exportarTodosFeedbacksExcel(), disabled: loadingExport || filteredFeedbacks.length === 0 && suggestions.length === 0, children: loadingExport ? 'Exportando...' : 'Exportar para Excel' }), _jsx(ExportButton, { "aria-label": "Exportar para PDF", onClick: () => exportarTodosFeedbacksPDF(), disabled: loadingExportPDF || filteredFeedbacks.length === 0 && suggestions.length === 0, children: loadingExportPDF ? 'Exportando...' : 'Exportar para PDF' }), _jsx(ExportButton, { onClick: handleManualUpdate, style: { background: '#3182CE', border: '1px solid #3182CE' }, children: bgLoading ? 'Atualizando...' : 'Atualizar' })] }), exportError && _jsx("div", { style: { color: 'red', marginTop: 8 }, children: exportError }), exportSuccess && _jsx("div", { style: { color: 'green', marginTop: 8 }, children: exportSuccess }), _jsx(FilterContainer, { children: _jsxs(FilterGroup, { children: [_jsxs(Select, { value: departmentFilter, onChange: e => setDepartmentFilter(e.target.value), children: [_jsx("option", { value: "", children: "Todos os Departamentos" }), departments.map(dep => (_jsx("option", { value: dep.id, children: dep.name }, dep.id)))] }), _jsx(Select, { value: ratingFilter, onChange: e => setRatingFilter(e.target.value), children: ratingOptions.map(opt => (_jsx("option", { value: opt.value, children: opt.label }, opt.value))) }), _jsx("input", { type: "date", value: startDate, onChange: e => setStartDate(e.target.value), style: { padding: '8px', borderRadius: '6px', border: '1px solid #2F855A' }, placeholder: "Data inicial" }), _jsx("input", { type: "date", value: endDate, onChange: e => setEndDate(e.target.value), style: { padding: '8px', borderRadius: '6px', border: '1px solid #2F855A' }, placeholder: "Data final" })] }) }), loading ? (_jsx("div", { style: { margin: '40px 0', fontSize: 20, color: '#2F855A', textAlign: 'center' }, children: "Carregando feedbacks..." })) : (_jsxs(Grid, { children: [_jsxs(Card, { children: [_jsx(CardTitle, { children: "Total de Feedbacks" }), _jsx(Total, { children: totalFeedbacks })] }), departments.map(dep => {
+                                }, children: "Sair" })] })] }), showRegister && (_jsx(ModalOverlay, { children: _jsxs(ModalContent, { ref: modalRef, role: "dialog", "aria-modal": "true", tabIndex: -1, children: [_jsx(CloseButton, { onClick: () => { setShowRegister(false); setRegisterMsg(''); }, title: "Fechar", children: _jsx(FiX, {}) }), _jsx(ModalTitle, { children: "Cadastrar Novo Usu\u00E1rio" }), _jsxs("form", { onSubmit: handleRegister, children: [_jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiUser, {}) }), _jsx(Input, { type: "text", placeholder: "Nome", value: nomeNovo, onChange: e => setNomeNovo(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiMail, {}) }), _jsx(Input, { type: "email", placeholder: "E-mail", value: emailNovo, onChange: e => setEmailNovo(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Senha", value: senhaNovo, onChange: e => setSenhaNovo(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Confirmar senha", value: confirmaSenhaNovo, onChange: e => setConfirmaSenhaNovo(e.target.value), required: true })] }), _jsxs(ButtonGroup, { children: [_jsx(Button, { type: "submit", variant: "primary", disabled: registerLoading, children: registerLoading ? 'Cadastrando...' : 'Cadastrar' }), _jsx(Button, { type: "button", variant: "secondary", onClick: () => { setShowRegister(false); setRegisterMsg(''); }, children: "Cancelar" })] }), registerMsg && (_jsx(Message, { type: registerMsg.includes('sucesso') ? 'success' : 'error', children: registerMsg }))] })] }) })), showChangeUserPassword && (_jsx(ModalOverlay, { children: _jsxs(ModalContent, { ref: modalRef, role: "dialog", "aria-modal": "true", tabIndex: -1, children: [_jsx(CloseButton, { onClick: () => { setShowChangeUserPassword(false); setChangeUserMsg(''); }, title: "Fechar", children: _jsx(FiX, {}) }), _jsx(ModalTitle, { children: "Alterar senha de usu\u00E1rio" }), _jsxs("form", { onSubmit: handleChangeUserPassword, children: [_jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiMail, {}) }), _jsx(Input, { type: "email", placeholder: "E-mail do usu\u00E1rio", value: changeUserEmail, onChange: e => setChangeUserEmail(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Nova senha", value: changeUserNewPassword, onChange: e => setChangeUserNewPassword(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Confirmar nova senha", value: changeUserConfirmPassword, onChange: e => setChangeUserConfirmPassword(e.target.value), required: true })] }), _jsxs(ButtonGroup, { children: [_jsx(Button, { type: "submit", variant: "primary", disabled: changeUserLoading, children: changeUserLoading ? 'Alterando...' : 'Alterar senha' }), _jsx(Button, { type: "button", variant: "secondary", onClick: () => { setShowChangeUserPassword(false); setChangeUserMsg(''); }, children: "Cancelar" })] }), changeUserMsg && (_jsx(Message, { type: changeUserMsg.includes('sucesso') ? 'success' : 'error', children: changeUserMsg }))] })] }) })), _jsxs(ExportButtonsContainer, { children: [_jsx(ExportButton, { "aria-label": "Exportar para Excel", onClick: () => exportarTodosFeedbacksExcel(), disabled: loadingExport || filteredFeedbacks.length === 0 && suggestions.length === 0, children: loadingExport ? 'Exportando...' : 'Exportar para Excel' }), _jsx(ExportButton, { "aria-label": "Exportar para PDF", onClick: () => exportarTodosFeedbacksPDF(), disabled: loadingExportPDF || filteredFeedbacks.length === 0 && suggestions.length === 0, children: loadingExportPDF ? 'Exportando...' : 'Exportar para PDF' }), _jsx(ExportButton, { onClick: handleManualUpdate, style: { background: '#3182CE', border: '1px solid #3182CE' }, children: bgLoading ? 'Atualizando...' : 'Atualizar' })] }), exportError && _jsx("div", { style: { color: 'red', marginTop: 8 }, children: exportError }), exportSuccess && _jsx("div", { style: { color: 'green', marginTop: 8 }, children: exportSuccess }), _jsx(FilterContainer, { children: _jsxs(FilterGroup, { children: [_jsxs(Select, { value: departmentFilter, onChange: e => setDepartmentFilter(e.target.value), children: [_jsx("option", { value: "", children: "Todos os Departamentos" }), departments.map(dep => (_jsx("option", { value: dep.id, children: dep.name }, dep.id)))] }), _jsx(Select, { value: ratingFilter, onChange: e => setRatingFilter(e.target.value), children: ratingOptions.map(opt => (_jsx("option", { value: opt.value, children: opt.label }, opt.value))) }), _jsx("input", { type: "date", value: startDate, onChange: e => setStartDate(e.target.value), style: { padding: '8px', borderRadius: '6px', border: '1px solid #2F855A' }, placeholder: "Data inicial" }), _jsx("input", { type: "date", value: endDate, onChange: e => setEndDate(e.target.value), style: { padding: '8px', borderRadius: '6px', border: '1px solid #2F855A' }, placeholder: "Data final" })] }) }), _jsxs("div", { style: {
+                    textAlign: 'center',
+                    margin: '0 0 32px 0',
+                    background: '#fff',
+                    borderRadius: 12,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                    padding: 24,
+                    maxWidth: 900,
+                    marginLeft: 'auto',
+                    marginRight: 'auto'
+                }, children: [_jsx("span", { style: { fontSize: '2.2rem' }, children: emojiSummary.emoji }), _jsxs("p", { style: { margin: 0 }, children: ["M\u00E9dia geral de recomenda\u00E7\u00E3o: ", _jsxs("strong", { children: [mediaRecomendacao ? mediaRecomendacao.toFixed(1) : '--', " / 10"] })] }), _jsxs("small", { children: ["Sentimento predominante: ", emojiSummary.label] })] }), loading ? (_jsx("div", { style: { margin: '40px 0', fontSize: 20, color: '#2F855A', textAlign: 'center' }, children: "Carregando feedbacks..." })) : (_jsxs(Grid, { children: [_jsxs(Card, { children: [_jsx(CardTitle, { children: "Total de Feedbacks" }), _jsx(Total, { children: totalFeedbacks })] }), departments.map(dep => {
                         const stats = getStats(dep.id);
                         return (_jsxs(Card, { children: [_jsx(CardTitle, { children: dep.name }), _jsxs(Avaliacoes, { children: [_jsxs(AvaliacaoButton, { "$tipo": "Excelente", children: ["\u00D3timo ", stats.Excelente] }), _jsxs(AvaliacaoButton, { "$tipo": "Bom", children: ["Bom ", stats.Bom] }), _jsxs(AvaliacaoButton, { "$tipo": "Regular", children: ["Regular ", stats.Regular] }), _jsxs(AvaliacaoButton, { "$tipo": "Ruim", children: ["Ruim ", stats.Ruim] })] })] }, dep.id));
                     }), _jsxs(FullWidthCard, { children: [_jsx(CardTitle, { children: "Sugest\u00F5es dos pacientes" }), _jsxs(SuggestionList, { children: [allSuggestions.length === 0 && (_jsx(SuggestionItem, { children: "Nenhuma sugest\u00E3o geral enviada ainda." })), allSuggestions

@@ -3,12 +3,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import styled from 'styled-components';
 import { FeedbackProvider } from './contexts/FeedBackContext';
 import AvaliacaoPage from './pages/AvaliacaoPage';
-import ThankYou from './pages/ThankYou';
+import ThankYouPage from './pages/ThankYouPage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLogin from './pages/admin/Login';
 import { createGlobalStyle } from 'styled-components';
 import RequireAuth from './components/RequireAuth';
 import FeedbacksDetalhados from './pages/FeedbacksDetalhados';
+import ReportPDF from './components/ReportPDF';
 
 const GlobalStyle = createGlobalStyle`
   * {
@@ -43,10 +44,11 @@ const App: React.FC = () => {
               path="/avaliar/:departmentId" 
               element={<AvaliacaoPage />} 
             />
-            <Route path="/obrigado" element={<ThankYou />} />
+            <Route path="/obrigado" element={<ThankYouPage />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
             <Route path="/admin/feedbacks-detalhados" element={<RequireAuth><FeedbacksDetalhados /></RequireAuth>} />
+            <Route path="/admin/relatorio" element={<RequireAuth><ReportPDF /></RequireAuth>} />
           </Routes>
         </AppContainer>
       </FeedbackProvider>

@@ -23,9 +23,14 @@ const Container = styled.div`
 `;
 
 const Logo = styled.img`
-  width: 180px;
+  width: 220px;
+  max-width: 90vw;
   margin-top: 10px;
   margin-bottom: 18px;
+
+  @media (max-width: 480px) {
+    width: 140px;
+  }
 `;
 
 const Title = styled.h2`

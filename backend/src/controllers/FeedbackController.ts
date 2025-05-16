@@ -6,13 +6,13 @@ import logger from '../config/logger';
 export class FeedbackController {
   async create(req: Request, res: Response) {
     try {
-      const { department, rating, suggestion } = req.body;
+      const { department, rating, suggestion, recomendacao } = req.body;
       if (!department || !rating) {
         return res.status(400).json({ error: 'Departamento e avaliação são obrigatórios.' });
       }
       const userId = req.user?.id;
 
-      logger.info('Recebendo novo feedback', { department, rating, userId });
+      logger.info('Recebendo novo feedback', { department, rating, userId, recomendacao });
 
       const feedbackRepository = AppDataSource.getRepository(Feedback);
 
@@ -26,11 +26,14 @@ export class FeedbackController {
       if (suggestion) {
         feedbackData.suggestion = suggestion;
       }
+      if (recomendacao !== undefined) {
+        feedbackData.recomendacao = recomendacao;
+      }
       const feedback = feedbackRepository.create(feedbackData);
 
       await feedbackRepository.save(feedback);
 
-      logger.info('Feedback salvo com sucesso', { feedbackId: (feedback as unknown as Feedback).id });
+      logger.info('Feedback salvo com sucesso', { feedbackId: (feedback as unknown as Feedback).id, recomendacao: feedback.recomendacao });
 
       return res.status(201).json(feedback);
     } catch (error) {
@@ -42,7 +45,7 @@ export class FeedbackController {
   async list(req: Request, res: Response) {
     try {
       const feedbackRepository = AppDataSource.getRepository(Feedback);
-      const { month, year, page = 1, limit = 10 } = req.query;
+      const { month, year, page = 1, limit = 1500 } = req.query;
 
       logger.info('Listando feedbacks', { month, year, page, limit });
 
@@ -55,6 +58,7 @@ export class FeedbackController {
           'feedback.rating',
           'feedback.createdAt',
           'feedback.suggestion',
+          'feedback.recomendacao',
           'user.id',
           'user.name',
         ]);

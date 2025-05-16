@@ -12,6 +12,10 @@ router.post(
     body('department').isString().trim().escape().notEmpty().withMessage('Departamento é obrigatório'),
     body('rating').isString().trim().escape().notEmpty().withMessage('Avaliação é obrigatória'),
     body('suggestion').optional().isString().trim(),
+    body('recomendacao')
+      .optional()
+      .isInt({ min: 0, max: 10 })
+      .withMessage('Recomendação deve ser um número entre 0 e 10'),
   ],
   feedbackController.create
 );

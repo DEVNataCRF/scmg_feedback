@@ -23,7 +23,7 @@ export const getFeedbacks = async () => {
     }
     return response.json();
 };
-export const createFeedback = async (department, rating) => {
+export const createFeedback = async (department, rating, suggestion, recomendacao) => {
     const token = getToken();
     const response = await fetch(`${API_URL}/api/feedback`, {
         method: 'POST',
@@ -31,7 +31,7 @@ export const createFeedback = async (department, rating) => {
             'Content-Type': 'application/json',
             ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ department, rating }),
+        body: JSON.stringify({ department, rating, suggestion, recomendacao }),
     });
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

@@ -5,10 +5,11 @@ import { departments } from '../../backend/src/constants/department';
 import * as ExcelJS from 'exceljs';
 import Papa from 'papaparse';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 import { useNavigate } from 'react-router-dom';
 import { getSuggestions } from '../services/api';
 import { FiUser, FiMail, FiLock, FiX } from 'react-icons/fi';
+import { saveAs } from 'file-saver';
 
 const GlobalStyle = createGlobalStyle`
   body {
@@ -407,7 +408,9 @@ const AdminDashboard: React.FC = () => {
       const created = new Date(f.createdAt).getTime();
       const matchesStart = !startDate || created >= new Date(startDate).setHours(0, 0, 0, 0);
       const matchesEnd = !endDate || created <= new Date(endDate).setHours(23, 59, 59, 999);
-      return matchesDepartment && matchesRating && matchesStart && matchesEnd;
+      // Ignorar sugestões gerais no dashboard
+      const isSuggestionGeral = f.department === 'geral';
+      return matchesDepartment && matchesRating && matchesStart && matchesEnd && !isSuggestionGeral;
     });
   }, [feedbacks, departmentFilter, ratingFilter, startDate, endDate]);
 
@@ -454,7 +457,7 @@ const AdminDashboard: React.FC = () => {
 
   // Unir sugestões do modelo Feedback e Suggestion
   const allSuggestions = [
-    ...filteredFeedbacks
+    ...feedbacks
       .filter(f => f.suggestion && f.suggestion.trim() !== '')
       .map(f => ({
         createdAt: f.createdAt,
@@ -466,185 +469,278 @@ const AdminDashboard: React.FC = () => {
     }))
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  // Função otimizada para exportar todos os feedbacks em lotes
+  // Calcular média de recomendação (considerando todos os feedbacks, inclusive 'geral')
+  const recomendacoes = feedbacks
+    .map(f => typeof f.recomendacao === 'number' ? f.recomendacao : null)
+    .filter(r => r !== null) as number[];
+  const mediaRecomendacao = recomendacoes.length
+    ? recomendacoes.reduce((a, b) => a + b, 0) / recomendacoes.length
+    : null;
+
+  function getEmojiSummary(media: number | null) {
+    if (media === null) return { emoji: '🤔', label: 'Sem dados' };
+    if (media <= 2) return { emoji: '😡', label: 'Muito insatisfeito' };
+    if (media <= 4) return { emoji: '😕', label: 'Insatisfeito' };
+    if (media <= 6) return { emoji: '😐', label: 'Neutro' };
+    if (media <= 8) return { emoji: '🙂', label: 'Satisfeito' };
+    return { emoji: '😄', label: 'Muito satisfeito' };
+  }
+  const emojiSummary = getEmojiSummary(mediaRecomendacao);
+
+  const resumoSentimento = `${emojiSummary.emoji}  Média geral de recomendação: ${mediaRecomendacao ? mediaRecomendacao.toFixed(1) : '--'} / 10\nSentimento predominante: ${emojiSummary.label}`;
+
+  // Substituir a função exportarTodosFeedbacksExcel pelo código fornecido pelo usuário, mantendo a lógica de resumo, feedbacks e sugestões, e garantindo que utilize os dados e variáveis do dashboard.
   async function exportarTodosFeedbacksExcel() {
     setLoadingExport(true);
     setExportError('');
     setExportSuccess('');
+
     try {
-      let page = 1;
-      const limit = 500;
-      let todosFeedbacks: any[] = [];
-      let totalPages = 1;
-      const token = localStorage.getItem('token');
-
-      do {
-        const res = await fetch(`/api/feedback?page=${page}&limit=${limit}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        const data = await res.json();
-        todosFeedbacks = todosFeedbacks.concat(data.feedbacks);
-        totalPages = data.totalPages;
-        page++;
-      } while (page <= totalPages);
-
-      // Criar uma nova planilha
+      // Criando a instância do ExcelJS Workbook
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Relatório');
+      workbook.creator = 'SCMG';
+      workbook.created = new Date();
+      workbook.modified = new Date();
 
-      // Definir larguras das colunas
-      worksheet.columns = [
-        { header: 'Data', key: 'data', width: 20 },
-        { header: 'Departamento', key: 'departamento', width: 15 },
-        { header: 'Avaliação', key: 'avaliacao', width: 80 }
+      // =============================
+      // ABA DE RESUMO
+      // =============================
+      const resumoSheet = workbook.addWorksheet('Resumo');
+
+      // Cabeçalho do Resumo
+      resumoSheet.columns = [
+        { header: 'Data de Geração', key: 'data', width: 20 },
+        { header: 'Sentimento', key: 'sentimento', width: 30 },
+        { header: 'Média de Recomendação', key: 'media', width: 30 },
       ];
 
-      // Estilizar cabeçalho
-      worksheet.getRow(1).font = { bold: true };
-      worksheet.getRow(1).fill = {
+      resumoSheet.getRow(1).font = { bold: true };
+      resumoSheet.getRow(1).fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF2F855A' }
+        fgColor: { argb: 'FF4CAF50' },
+        bgColor: { argb: 'FF4CAF50' },
       };
-      worksheet.getRow(1).font = { color: { argb: 'FFFFFFFF' } };
+      resumoSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' } };
 
-      // Adicionar dados dos feedbacks
-      todosFeedbacks.forEach(feedback => {
-        worksheet.addRow({
-          data: new Date(feedback.createdAt).toLocaleString('pt-BR'),
-          departamento: departments.find(d => d.id === feedback.department)?.name || feedback.department,
-          avaliacao: feedback.rating
-        });
+      // Adicionando os dados do resumo
+      resumoSheet.addRow({
+        data: new Date().toLocaleString('pt-BR'),
+        sentimento: emojiSummary.label,
+        media: mediaRecomendacao ? mediaRecomendacao.toFixed(1) : 'Sem dados',
       });
 
-      // Adicionar linha em branco
-      worksheet.addRow({});
+      // =============================
+      // ABA DE RECOMENDAÇÕES
+      // =============================
+      const recomendacaoSheet = workbook.addWorksheet('Recomendações');
 
-      // Adicionar cabeçalho para sugestões
-      const suggestionHeaderRow = worksheet.addRow({
-        data: '',
-        departamento: '',
-        avaliacao: 'Sugestões Gerais'
-      });
-      suggestionHeaderRow.font = { bold: true };
-      suggestionHeaderRow.fill = {
+      recomendacaoSheet.columns = [
+        { header: 'Data/Hora', key: 'data', width: 25 },
+        { header: 'Nota', key: 'nota', width: 10 },
+        { header: 'Emoji', key: 'emoji', width: 10 }
+      ];
+
+      recomendacaoSheet.getRow(1).font = { bold: true };
+      recomendacaoSheet.getRow(1).fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF3182CE' }
+        fgColor: { argb: 'FF4CAF50' },
+        bgColor: { argb: 'FF4CAF50' },
       };
-      suggestionHeaderRow.font = { color: { argb: 'FFFFFFFF' } };
+      recomendacaoSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' } };
 
-      // Adicionar sugestões
-      allSuggestions.forEach(s => {
-        worksheet.addRow({
-          data: new Date(s.createdAt).toLocaleString('pt-BR'),
-          departamento: '',
-          avaliacao: s.suggestion
+      // Adicionando as recomendações individuais com data/hora
+      feedbacks
+        .filter(f => typeof f.recomendacao === 'number')
+        .forEach(f => {
+          recomendacaoSheet.addRow({
+            data: new Date(f.createdAt).toLocaleString('pt-BR'),
+            nota: f.recomendacao,
+            emoji: getEmojiSummary(typeof f.recomendacao === 'number' ? f.recomendacao : null).emoji
+          });
+        });
+
+      // =============================
+      // ABA DE FEEDBACKS
+      // =============================
+      const feedbackSheet = workbook.addWorksheet('Feedbacks');
+      
+      feedbackSheet.columns = [
+        { header: 'Data', key: 'date', width: 25 },
+        { header: 'Departamento', key: 'department', width: 30 },
+        { header: 'Avaliação', key: 'rating', width: 20 }
+      ];
+
+      feedbackSheet.getRow(1).font = { bold: true };
+      feedbackSheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4CAF50' },
+        bgColor: { argb: 'FF4CAF50' },
+      };
+      feedbackSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' } };
+
+      // Adicionando os dados
+      filteredFeedbacks.forEach((feedback) => {
+        feedbackSheet.addRow({
+          date: new Date(feedback.createdAt).toLocaleString('pt-BR'),
+          department: departments.find(d => d.id === feedback.department)?.name || feedback.department,
+          rating: feedback.rating,
         });
       });
 
-      // Estilizar células
-      worksheet.eachRow((row, rowNumber) => {
-        row.eachCell((cell) => {
-          cell.border = {
-            top: { style: 'thin' },
-            left: { style: 'thin' },
-            bottom: { style: 'thin' },
-            right: { style: 'thin' }
-          };
-          cell.alignment = { vertical: 'middle', wrapText: true };
+      // =============================
+      // ABA DE SUGESTÕES
+      // =============================
+      const suggestionSheet = workbook.addWorksheet('Sugestões');
+
+      suggestionSheet.columns = [
+        { header: 'Data', key: 'date', width: 25 },
+        { header: 'Sugestão', key: 'suggestion', width: 50 }
+      ];
+
+      suggestionSheet.getRow(1).font = { bold: true };
+      suggestionSheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4CAF50' },
+        bgColor: { argb: 'FF4CAF50' },
+      };
+      suggestionSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' } };
+
+      // Adicionando os dados
+      allSuggestions.forEach((suggestion) => {
+        suggestionSheet.addRow({
+          date: new Date(suggestion.createdAt).toLocaleString('pt-BR'),
+          suggestion: suggestion.suggestion,
         });
       });
 
-      // Gerar arquivo
+      // =============================
+      // GERAR O ARQUIVO
+      // =============================
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'Relatorio_Feedbacks_e_Sugestoes.xlsx';
-      link.click();
-      window.URL.revokeObjectURL(url);
+
+      // Nome do arquivo
+      const formattedDate = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+      const fileName = `SCMG - RELATÓRIO DE FEEDBACKS E SUGESTÕES ${formattedDate}.xlsx`;
+
+      saveAs(blob, fileName);
+
       setExportSuccess('Exportação para Excel concluída!');
     } catch (err) {
-      setExportError('Erro ao exportar para Excel. Tente novamente.');
+      console.error('Erro ao exportar Excel:', err);
+      setExportError('Erro ao exportar Excel.');
     }
     setLoadingExport(false);
   }
 
-  // Função otimizada para exportar todos os feedbacks em lotes para PDF
+  // Substituir a função exportarTodosFeedbacksPDF para gerar o PDF no frontend, usando jsPDF e autoTable, com layout bonito, igual ao exemplo do usuário. Não fazer requisição ao backend para exportação do PDF.
   async function exportarTodosFeedbacksPDF() {
     setLoadingExportPDF(true);
     setExportError('');
     setExportSuccess('');
     try {
-      let page = 1;
-      const limit = 500;
-      let todosFeedbacks: any[] = [];
-      let totalPages = 1;
-      const token = localStorage.getItem('token');
+      // Ordenar feedbacks e sugestões por data decrescente (mais recente primeiro)
+      const feedbacksOrdenados = [...filteredFeedbacks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const sugestoesOrdenadas = [...allSuggestions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-      do {
-        const res = await fetch(`/api/feedback?page=${page}&limit=${limit}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        const data = await res.json();
-        todosFeedbacks = todosFeedbacks.concat(data.feedbacks);
-        totalPages = data.totalPages;
-        page++;
-      } while (page <= totalPages);
+      const getBadgeColor = (status: string) => {
+        if (status === 'Excelente') return [76, 175, 80]; // verde
+        if (status === 'Bom') return [33, 150, 243]; // azul
+        if (status === 'Regular') return [255, 193, 7]; // amarelo
+        return [244, 67, 54]; // vermelho
+      };
+
+      // Gera o nome do arquivo com a data atual formatada
+      const formattedDate = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+      const fileName = `SCMG - RELATÓRIO DE FEEDBACKS E SUGESTÕES ${formattedDate}.pdf`;
 
       const doc = new jsPDF();
-      // Avaliações
-      const feedbackTable = todosFeedbacks.map(feedback => ([
-        ((feedback.createdAt && !isNaN(new Date(feedback.createdAt).getTime())
-          ? new Date(feedback.createdAt).toLocaleString('pt-BR') : '') || '') + '',
-        (departments.find(d => d.id === feedback.department)?.name || feedback.department || '') + '',
-        (feedback.rating || '') + ''
-      ]));
-      autoTable(doc, {
-        head: [['Data', 'Departamento', 'Avaliação']],
-        body: feedbackTable,
-        startY: 10,
-        margin: { top: 10 },
-        styles: { fontSize: 10 },
-        didDrawPage: (data) => {
-          doc.setFontSize(14);
-          doc.text('Relatório de Feedbacks', data.settings.margin.left, 6);
-        }
+      doc.setFontSize(22);
+      doc.setTextColor(76, 175, 80); // #4caf50
+      doc.text('Relatório de Feedbacks e Sugestões', 105, 18, { align: 'center' });
+
+      doc.setFontSize(12);
+      doc.setTextColor(120, 144, 156); // #78909c
+      doc.text(`Data de Geração: ${new Date().toLocaleDateString('pt-BR')}`, 105, 26, { align: 'center' });
+
+      // No resumo superior, mostrar apenas o texto
+      const resumoTexto = `Média geral de recomendação: ${mediaRecomendacao ? mediaRecomendacao.toFixed(1) : '--'} / 10\nSentimento predominante: ${emojiSummary.label}`;
+      doc.setFontSize(14);
+      doc.setTextColor(44, 62, 80);
+      doc.text(resumoTexto, 105, 34, { align: 'center' });
+      // Feedbacks dos Pacientes
+      doc.setTextColor(44, 62, 80); // #2d3e50
+      doc.setFontSize(16);
+      doc.text('Feedbacks dos Pacientes', 14, 50);
+      doc.autoTable({
+        startY: 56,
+        head: [["Data", "Departamento", "Avaliação"]],
+        body: feedbacksOrdenados.map(f => [
+          new Date(f.createdAt).toLocaleString('pt-BR'),
+          departments.find(d => d.id === f.department)?.name || f.department,
+          f.rating
+        ]),
+        headStyles: { fillColor: [76, 175, 80], textColor: 255, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 11 },
+        styles: { halign: 'left' },
+        didParseCell: function (data: any) {
+          if (data.section === 'body' && data.column.index === 2) {
+            const valor = data.cell.raw;
+            const color = getBadgeColor(valor);
+            data.cell.styles.fillColor = color;
+            data.cell.styles.textColor = 255;
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
       });
-      // Espaço e título para sugestões gerais
-      let finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY : 20;
-      (doc as any).setFontSize(12);
-      (doc as any).text('Sugestões dos pacientes', 14, finalY + 10);
-      // Sugestões gerais (todas)
-      const suggestionTable = allSuggestions.map(s => ([
-        String(new Date(s.createdAt).toLocaleString('pt-BR')),
-        String(s.suggestion)
-      ]));
-      autoTable(doc, {
-        head: [['Data', 'Sugestão']],
-        body: suggestionTable,
-        startY: finalY + 15,
-        styles: { fontSize: 10 }
+
+      // Sugestões dos Pacientes
+      let y = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(16);
+      doc.text('Sugestões dos Pacientes', 14, y);
+      doc.autoTable({
+        startY: y + 5,
+        head: [["Data", "Sugestão"]],
+        body: sugestoesOrdenadas.map(s => [
+          new Date(s.createdAt).toLocaleString('pt-BR'),
+          s.suggestion
+        ]),
+        headStyles: { fillColor: [76, 175, 80], textColor: 255, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 11 },
+        styles: { halign: 'left' },
       });
-      // Adicionar rodapé com usuário responsável
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const nomeUsuario = user.name || user.email || 'Desconhecido';
-      const pageCount = (doc as any).internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        (doc as any).setPage(i);
-        (doc as any).setFontSize(10);
-        (doc as any).text(`USUÁRIO: ${nomeUsuario}`, 14, (doc as any).internal.pageSize.height - 10);
-      }
-      doc.save('Relatorio_Feedbacks_e_Sugestoes.pdf');
+
+      // =============================
+      // Recomendações dos Pacientes (no final do PDF)
+      // =============================
+      let yRecomendacao = (doc as any).lastAutoTable.finalY + 15;
+      doc.setFontSize(16);
+      doc.setTextColor(44, 62, 80);
+      doc.text('Recomendações dos Pacientes', 14, yRecomendacao);
+      doc.setFontSize(12);
+      yRecomendacao += 6;
+      recomendacoes.forEach((nota) => {
+        let texto = '';
+        if (nota >= 0 && nota <= 2) texto = 'Muito insatisfeito';
+        else if (nota >= 3 && nota <= 4) texto = 'Insatisfeito';
+        else if (nota >= 5 && nota <= 6) texto = 'Neutro';
+        else if (nota >= 7 && nota <= 8) texto = 'Satisfeito';
+        else if (nota >= 9 && nota <= 10) texto = 'Muito satisfeito';
+        else texto = 'Sem dados';
+        doc.text(`Nota: ${nota}   ${texto}`, 16, yRecomendacao);
+        yRecomendacao += 8;
+      });
+
+      // Nome do arquivo com formato atualizado
+      doc.save(fileName);
       setExportSuccess('Exportação para PDF concluída!');
     } catch (err) {
-      setExportError('Erro ao exportar para PDF. Tente novamente.');
+      console.error('Erro ao exportar PDF:', err);
+      setExportError('Erro ao exportar PDF.');
     }
     setLoadingExportPDF(false);
   }
@@ -1020,6 +1116,26 @@ const AdminDashboard: React.FC = () => {
           />
         </FilterGroup>
       </FilterContainer>
+
+      {/* Emoji Summary abaixo do filtro */}
+      <div style={{
+        textAlign: 'center',
+        margin: '0 0 32px 0',
+        background: '#fff',
+        borderRadius: 12,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+        padding: 24,
+        maxWidth: 900,
+        marginLeft: 'auto',
+        marginRight: 'auto'
+      }}>
+        <span style={{ fontSize: '2.2rem' }}>{emojiSummary.emoji}</span>
+        <p style={{ margin: 0 }}>
+          Média geral de recomendação: <strong>{mediaRecomendacao ? mediaRecomendacao.toFixed(1) : '--'} / 10</strong>
+        </p>
+        <small>Sentimento predominante: {emojiSummary.label}</small>
+      </div>
+
       {loading ? (
         <div style={{ margin: '40px 0', fontSize: 20, color: '#2F855A', textAlign: 'center' }}>Carregando feedbacks...</div>
       ) : (

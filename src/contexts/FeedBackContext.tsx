@@ -11,6 +11,7 @@ export interface Feedback {
   timestamp: number;
   suggestion?: string;
   createdAt: string | number;
+  recomendacao?: number;
 }
 
 interface FeedbackContextData {

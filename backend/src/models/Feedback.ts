@@ -35,4 +35,7 @@ export class Feedback {
 
   @Column({ nullable: true, type: 'text' })
   suggestion?: string;
+
+  @Column({ nullable: true, type: 'int' })
+  recomendacao?: number;
 } 
