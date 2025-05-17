@@ -117,14 +117,17 @@ const Login: React.FC = () => {
   React.useEffect(() => {
     let timer: NodeJS.Timeout;
     if (isBlocked && blockTime > 0) {
+      console.log(`Botão de login bloqueado por ${blockTime} segundos.`);
       timer = setInterval(() => {
         setBlockTime((prev) => {
           if (prev <= 1) {
             setIsBlocked(false);
             setLoginAttempts(0);
+            console.log('Botão de login desbloqueado.');
             clearInterval(timer);
             return 0;
           }
+          console.log(`Tempo restante de bloqueio: ${prev - 1} segundos.`);
           return prev - 1;
         });
       }, 1000);
@@ -153,9 +156,11 @@ const Login: React.FC = () => {
       if (!response.ok) {
         setLoginAttempts((prev) => {
           const attempts = prev + 1;
+          console.log(`Tentativa de login falha #${attempts}`);
           if (attempts >= 4) {
             setIsBlocked(true);
             setBlockTime(90);
+            console.log('Botão de login bloqueado por 90 segundos após 4 tentativas falhas.');
           }
           return attempts;
         });
