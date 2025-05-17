@@ -120,7 +120,14 @@ const Login: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password: senha })
       });
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        const text = await response.text();
+        setError(text || 'Erro ao fazer login.');
+        return;
+      }
       if (!response.ok) {
         setError(data.error || 'Usuário ou senha inválidos.');
         return;
