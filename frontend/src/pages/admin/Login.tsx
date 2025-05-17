@@ -107,13 +107,35 @@ const Login: React.FC = () => {
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmaNovaSenha, setConfirmaNovaSenha] = useState('');
   const [changeMsg, setChangeMsg] = useState('');
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockTime, setBlockTime] = useState(0);
   const navigate = useNavigate();
 
   const API_URL = import.meta.env.VITE_API_URL || '';
 
+  React.useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isBlocked && blockTime > 0) {
+      timer = setInterval(() => {
+        setBlockTime((prev) => {
+          if (prev <= 1) {
+            setIsBlocked(false);
+            setLoginAttempts(0);
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isBlocked, blockTime]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (isBlocked) return;
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
@@ -129,9 +151,18 @@ const Login: React.FC = () => {
         return;
       }
       if (!response.ok) {
+        setLoginAttempts((prev) => {
+          const attempts = prev + 1;
+          if (attempts >= 4) {
+            setIsBlocked(true);
+            setBlockTime(90);
+          }
+          return attempts;
+        });
         setError(data.error || 'Usuário ou senha inválidos.');
         return;
       }
+      setLoginAttempts(0);
       localStorage.setItem('token', data.token);
       localStorage.setItem('loginTime', Date.now().toString());
       localStorage.setItem('user', JSON.stringify(data.user));
@@ -150,7 +181,7 @@ const Login: React.FC = () => {
     }
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/auth/change-password', {
+      const response = await fetch(`${API_URL}/api/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,10 +229,17 @@ const Login: React.FC = () => {
                   required
                 />
               </InputGroup>
-              <Button type="submit">
+              <Button type="submit" disabled={isBlocked}>
                 <FiLogIn /> Entrar
               </Button>
-              <ErrorMsg>{error}</ErrorMsg>
+              <ErrorMsg>
+                {error}
+                {isBlocked && (
+                  <div style={{ color: '#dc3545', marginTop: 8 }}>
+                    Você excedeu o número de tentativas. Tente novamente em {blockTime} segundos.
+                  </div>
+                )}
+              </ErrorMsg>
             </form>
             <Link href="#" onClick={e => { e.preventDefault(); setShowChangePassword(true); }}>🔐 Alterar senha</Link>
           </>
