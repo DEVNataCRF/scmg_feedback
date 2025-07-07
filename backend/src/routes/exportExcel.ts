@@ -3,10 +3,11 @@ import ExcelJS from 'exceljs';
 import { AppDataSource } from '../config/database';
 import { Feedback } from '../models/Feedback';
 import { Suggestion } from '../models/Suggestion';
+import { authMiddleware, adminMiddleware } from '../middlewares/auth';
 
 const router = express.Router();
 
-router.get('/export/excel', async (req, res) => {
+router.get('/export/excel', authMiddleware, adminMiddleware, async (req, res) => {
   const user = req.user as any;
   const feedbackRepo = AppDataSource.getRepository(Feedback);
   const suggestionRepo = AppDataSource.getRepository(Suggestion);
