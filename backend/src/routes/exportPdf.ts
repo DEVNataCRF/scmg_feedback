@@ -3,6 +3,7 @@ import PDFDocument from 'pdfkit';
 import { AppDataSource } from '../config/database';
 import { Feedback } from '../models/Feedback';
 import { Suggestion } from '../models/Suggestion';
+import { authMiddleware, adminMiddleware } from '../middlewares/auth';
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ function getBadgeColor(status: string) {
   return '#f44336';
 }
 
-router.get('/export/pdf', async (req, res) => {
+router.get('/export/pdf', authMiddleware, adminMiddleware, async (req, res) => {
   const user = req.user as any;
   const doc = new PDFDocument({ margin: 40 });
   const filename = 'Relatorio_Pesquisa_Satisfacao.pdf';
