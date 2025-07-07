@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useState } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { FiMail, FiLock, FiLogIn } from 'react-icons/fi';
@@ -97,22 +97,61 @@ const Login = () => {
     const [novaSenha, setNovaSenha] = useState('');
     const [confirmaNovaSenha, setConfirmaNovaSenha] = useState('');
     const [changeMsg, setChangeMsg] = useState('');
+    const [loginAttempts, setLoginAttempts] = useState(0);
+    const [isBlocked, setIsBlocked] = useState(false);
+    const [blockTime, setBlockTime] = useState(0);
     const navigate = useNavigate();
     const API_URL = import.meta.env.VITE_API_URL || '';
+    React.useEffect(() => {
+        let timer;
+        if (isBlocked && blockTime > 0) {
+            timer = setInterval(() => {
+                setBlockTime((prev) => {
+                    if (prev <= 1) {
+                        setIsBlocked(false);
+                        setLoginAttempts(0);
+                        clearInterval(timer);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [isBlocked, blockTime]);
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        if (isBlocked)
+            return;
         try {
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password: senha })
             });
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            }
+            catch {
+                const text = await response.text();
+                setError(text || 'Erro ao fazer login.');
+                return;
+            }
             if (!response.ok) {
+                setLoginAttempts((prev) => {
+                    const attempts = prev + 1;
+                    if (attempts >= 4) {
+                        setIsBlocked(true);
+                        setBlockTime(90);
+                    }
+                    return attempts;
+                });
                 setError(data.error || 'Usuário ou senha inválidos.');
                 return;
             }
+            setLoginAttempts(0);
             localStorage.setItem('token', data.token);
             localStorage.setItem('loginTime', Date.now().toString());
             localStorage.setItem('user', JSON.stringify(data.user));
@@ -131,7 +170,7 @@ const Login = () => {
         }
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:3001/api/auth/change-password', {
+            const response = await fetch(`${API_URL}/api/auth/change-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -155,6 +194,6 @@ const Login = () => {
             setChangeMsg('Erro ao alterar senha.');
         }
     };
-    return (_jsx(Container, { children: _jsxs(Card, { children: [_jsx(Logo, { src: logo, alt: "Logo" }), _jsx(Title, { children: "Login do Administrador" }), !showChangePassword ? (_jsxs(_Fragment, { children: [_jsxs("form", { onSubmit: handleSubmit, children: [_jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiMail, {}) }), _jsx(Input, { type: "email", placeholder: "E-mail", value: email, onChange: e => setEmail(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Senha", value: senha, onChange: e => setSenha(e.target.value), required: true })] }), _jsxs(Button, { type: "submit", children: [_jsx(FiLogIn, {}), " Entrar"] }), _jsx(ErrorMsg, { children: error })] }), _jsx(Link, { href: "#", onClick: e => { e.preventDefault(); setShowChangePassword(true); }, children: "\uD83D\uDD10 Alterar senha" })] })) : (_jsxs(_Fragment, { children: [_jsxs("form", { onSubmit: handleChangePassword, children: [_jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiMail, {}) }), _jsx(Input, { type: "email", placeholder: "E-mail", value: changeEmail, onChange: e => setChangeEmail(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Senha atual", value: senhaAtual, onChange: e => setSenhaAtual(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Nova senha", value: novaSenha, onChange: e => setNovaSenha(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Confirmar nova senha", value: confirmaNovaSenha, onChange: e => setConfirmaNovaSenha(e.target.value), required: true })] }), _jsx(Button, { type: "submit", children: "Alterar senha" }), _jsx(ErrorMsg, { children: changeMsg })] }), _jsx(Link, { href: "#", onClick: e => { e.preventDefault(); setShowChangePassword(false); }, children: "Voltar para login" })] }))] }) }));
+    return (_jsx(Container, { children: _jsxs(Card, { children: [_jsx(Logo, { src: logo, alt: "Logo" }), _jsx(Title, { children: "Login do Administrador" }), !showChangePassword ? (_jsxs(_Fragment, { children: [_jsxs("form", { onSubmit: handleSubmit, children: [_jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiMail, {}) }), _jsx(Input, { type: "email", placeholder: "E-mail", value: email, onChange: e => setEmail(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Senha", value: senha, onChange: e => setSenha(e.target.value), required: true })] }), _jsxs(Button, { type: "submit", disabled: isBlocked, children: [_jsx(FiLogIn, {}), " Entrar"] }), _jsxs(ErrorMsg, { children: [error, isBlocked && (_jsxs("div", { style: { color: '#dc3545', marginTop: 8 }, children: ["Voc\u00EA excedeu o n\u00FAmero de tentativas. Tente novamente em ", blockTime, " segundos."] }))] })] }), _jsx(Link, { href: "#", onClick: e => { e.preventDefault(); setShowChangePassword(true); }, children: "\uD83D\uDD10 Alterar senha" })] })) : (_jsxs(_Fragment, { children: [_jsxs("form", { onSubmit: handleChangePassword, children: [_jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiMail, {}) }), _jsx(Input, { type: "email", placeholder: "E-mail", value: changeEmail, onChange: e => setChangeEmail(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Senha atual", value: senhaAtual, onChange: e => setSenhaAtual(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Nova senha", value: novaSenha, onChange: e => setNovaSenha(e.target.value), required: true })] }), _jsxs(InputGroup, { children: [_jsx(Icon, { children: _jsx(FiLock, {}) }), _jsx(Input, { type: "password", placeholder: "Confirmar nova senha", value: confirmaNovaSenha, onChange: e => setConfirmaNovaSenha(e.target.value), required: true })] }), _jsx(Button, { type: "submit", children: "Alterar senha" }), _jsx(ErrorMsg, { children: changeMsg })] }), _jsx(Link, { href: "#", onClick: e => { e.preventDefault(); setShowChangePassword(false); }, children: "Voltar para login" })] }))] }) }));
 };
 export default Login;
