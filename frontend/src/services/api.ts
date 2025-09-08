@@ -11,9 +11,7 @@ export interface FeedbacksResponse {
 function getToken() {
   const token = localStorage.getItem('token') || '';
   if (!token) {
-    console.warn('Token ausente no localStorage!');
-  } else {
-    console.info('Token enviado:', token);
+    console.warn('Credenciais de autenticação ausentes.');
   }
   return token;
 }
