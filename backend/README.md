@@ -23,7 +23,12 @@ PORT=3001
 DATABASE_URL=postgres://usuario:senha@localhost:5432/scmg
 JWT_SECRET=sua_chave_secreta
 JWT_EXPIRES_IN=1d
+ADMIN_EMAIL=admin@scmg.com.br
+ADMIN_PASSWORD=admin123
 ```
+
+- `ADMIN_EMAIL` e `ADMIN_PASSWORD` definem as credenciais do administrador inicial criado ao executar `npm run init-db`.
+- Altere esses valores em produção para garantir a segurança do sistema.
 
 ## Rodando os Testes
 
