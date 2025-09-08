@@ -168,9 +168,6 @@ const Login: React.FC = () => {
         return;
       }
       setLoginAttempts(0);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('loginTime', Date.now().toString());
-      localStorage.setItem('user', JSON.stringify(data.user));
       navigate('/admin');
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login.');
@@ -185,13 +182,12 @@ const Login: React.FC = () => {
       return;
     }
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/api/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
+        credentials: 'include',
         body: JSON.stringify({ email: changeEmail, senhaAtual, novaSenha })
       });
       const data = await response.json();

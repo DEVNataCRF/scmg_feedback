@@ -56,7 +56,7 @@ describe('POST /api/auth/login', () => {
       .post('/api/auth/login')
       .send({ email: 'test@example.com', password: 'password' });
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('token');
+    expect(res.headers['set-cookie']).toBeDefined();
     expect(res.body.user.email).toBe('test@example.com');
   });
 

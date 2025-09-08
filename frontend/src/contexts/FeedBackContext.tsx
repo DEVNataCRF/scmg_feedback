@@ -30,11 +30,6 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Função para buscar feedbacks do backend
   const fetchFeedbacks = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('Credenciais ausentes. Ignorando fetch de feedbacks.');
-      return;
-    }
     setLoading(true);
     try {
       const data = await getFeedbacks();
@@ -78,5 +73,3 @@ export const useFeedback = () => {
   }
   return context;
 };
-
-/* global localStorage */
