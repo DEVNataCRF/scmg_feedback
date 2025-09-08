@@ -1,7 +1,7 @@
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useFeedback } from '../contexts/FeedBackContext';
-import { departments, Department } from '../../backend/src/constants/department';
+import { departments, Department } from '../constants/departments';
 import otimoSvg from '../assets/otimo.svg.svg';
 import bomSvg from '../assets/bom.svg.svg';
 import regularSvg from '../assets/regular.svg.svg';
