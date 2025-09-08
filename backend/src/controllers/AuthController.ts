@@ -56,12 +56,12 @@ export class AuthController {
       const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
       if (!user) {
         logger.info('Tentativa de login falhou', { email, ip, resultado: 'Usuário não encontrado' });
-        return res.status(400).json({ error: 'Usuário não encontrado' });
+        return res.status(400).json({ error: 'Credenciais inválidas' });
       }
       const isValidPassword = await user.checkPassword(password);
       if (!isValidPassword) {
         logger.info('Tentativa de login falhou', { email, ip, resultado: 'Senha inválida' });
-        return res.status(400).json({ error: 'Senha inválida' });
+        return res.status(400).json({ error: 'Credenciais inválidas' });
       }
       logger.info('Login realizado com sucesso', { email, ip, resultado: 'Sucesso', isAdmin: user.isAdmin });
       const signOptions: SignOptions = {
@@ -88,7 +88,6 @@ export class AuthController {
         },
       });
     } catch (error) {
-      console.log(error); // DEBUG: mostrar erro real nos testes
       logger.error('Erro interno ao tentar login', { email: req.body?.email, error });
       return res.status(500).json({ error: 'Erro interno do servidor' });
     }
