@@ -19,9 +19,21 @@ describe('POST /api/feedback', () => {
   app.use(express.json());
   app.use('/api/feedback', feedbackRoutes);
 
-  it('returns 400 when fields are missing', async () => {
+  it('returns 422 when fields are missing', async () => {
     const res = await request(app).post('/api/feedback').send({});
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
+    expect(res.body.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: 'departmentId',
+          message: 'Departamento é obrigatório',
+        }),
+        expect.objectContaining({
+          field: 'rating',
+          message: 'Avaliação é obrigatória',
+        }),
+      ])
+    );
   });
 
   it('creates feedback when valid', async () => {
