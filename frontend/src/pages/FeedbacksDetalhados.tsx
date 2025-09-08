@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useFeedback } from '../contexts/FeedBackContext';
-import { departments } from '../../../backend/src/constants/department';
+import { departments } from '../constants/department';
 import { useNavigate } from 'react-router-dom';
 
 const Container = styled.div`
