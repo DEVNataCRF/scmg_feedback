@@ -20,8 +20,20 @@ export class AuthController {
       await user.hashPassword();
       await userRepository.save(user);
 
-      const signOptions: SignOptions = { expiresIn: env.JWT_EXPIRES_IN as any || '1d' };
-      const token = jwt.sign({ id: user.id }, env.JWT_SECRET as Secret, signOptions);
+      const signOptions: SignOptions = {
+        expiresIn: (env.JWT_EXPIRES_IN as any) || '1d',
+      };
+      const token = jwt.sign(
+        { id: user.id },
+        env.JWT_SECRET as Secret,
+        signOptions
+      );
+
+      res.cookie('token', token, {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
+      });
 
       return res.status(201).json({
         user: {
@@ -30,7 +42,6 @@ export class AuthController {
           email: user.email,
           isAdmin: user.isAdmin,
         },
-        token,
       });
     } catch (error) {
       return res.status(500).json({ error: 'Erro interno do servidor' });
@@ -53,8 +64,21 @@ export class AuthController {
         return res.status(400).json({ error: 'Senha inválida' });
       }
       logger.info('Login realizado com sucesso', { email, ip, resultado: 'Sucesso', isAdmin: user.isAdmin });
-      const signOptions: SignOptions = { expiresIn: env.JWT_EXPIRES_IN as any || '1d' };
-      const token = jwt.sign({ id: user.id }, env.JWT_SECRET as Secret, signOptions);
+      const signOptions: SignOptions = {
+        expiresIn: (env.JWT_EXPIRES_IN as any) || '1d',
+      };
+      const token = jwt.sign(
+        { id: user.id },
+        env.JWT_SECRET as Secret,
+        signOptions
+      );
+
+      res.cookie('token', token, {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
+      });
+
       return res.json({
         user: {
           id: user.id,
@@ -62,7 +86,6 @@ export class AuthController {
           email: user.email,
           isAdmin: user.isAdmin,
         },
-        token,
       });
     } catch (error) {
       console.log(error); // DEBUG: mostrar erro real nos testes
@@ -74,16 +97,22 @@ export class AuthController {
   async changePassword(req: Request, res: Response) {
     try {
       // Processar token manualmente para popular req.user
-      const authHeader = req.headers['authorization'];
-      if (authHeader && authHeader.startsWith('Bearer ')) {
+      const cookieHeader = req.headers.cookie;
+      if (cookieHeader) {
         try {
-          const token = authHeader.replace('Bearer ', '').trim();
-          const data = jwt.verify(token, env.JWT_SECRET);
-          const { id } = data as any;
-          const userRepository = AppDataSource.getRepository(User);
-          const adminUser = await userRepository.findOne({ where: { id } });
-          if (adminUser) {
-            req.user = adminUser;
+          const token = cookieHeader
+            .split(';')
+            .map(c => c.trim())
+            .find(c => c.startsWith('token='))
+            ?.split('=')[1];
+          if (token) {
+            const data = jwt.verify(token, env.JWT_SECRET);
+            const { id } = data as any;
+            const userRepository = AppDataSource.getRepository(User);
+            const adminUser = await userRepository.findOne({ where: { id } });
+            if (adminUser) {
+              req.user = adminUser;
+            }
           }
         } catch (err) {
           // Token inválido, segue fluxo sem req.user

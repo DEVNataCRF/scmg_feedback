@@ -764,8 +764,6 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('loginTime');
     navigate('/admin/login');
   };
 
@@ -798,13 +796,12 @@ const AdminDashboard: React.FC = () => {
     }
     setRegisterLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:3001/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
+        credentials: 'include',
         body: JSON.stringify({ name: nomeNovo, email: emailNovo, password: senhaNovo })
       });
       const data = await response.json();
@@ -855,14 +852,7 @@ const AdminDashboard: React.FC = () => {
   }, [showRegister]);
 
   // Verificar se o usuário logado é admin
-  const isAdmin = useMemo(() => {
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      return user.isAdmin === true;
-    } catch {
-      return false;
-    }
-  }, []);
+  const isAdmin = useMemo(() => false, []);
 
   // Função para alterar senha de outro usuário (admin)
   const handleChangeUserPassword = async (e: React.FormEvent) => {
@@ -878,13 +868,12 @@ const AdminDashboard: React.FC = () => {
     }
     setChangeUserLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:3001/api/auth/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
+        credentials: 'include',
         body: JSON.stringify({ email: changeUserEmail, novaSenha: changeUserNewPassword })
       });
       const data = await response.json();

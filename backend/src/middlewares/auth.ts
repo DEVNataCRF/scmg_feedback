@@ -15,13 +15,16 @@ export const authMiddleware = async (
   res: Response,
   next: NextFunction
 ) => {
-  const { authorization } = req.headers;
+  const cookieHeader = req.headers.cookie;
+  const token = cookieHeader
+    ?.split(';')
+    .map(c => c.trim())
+    .find(c => c.startsWith('token='))
+    ?.split('=')[1];
 
-  if (!authorization) {
+  if (!token) {
     return res.status(401).json({ error: 'Token não fornecido' });
   }
-
-  const token = authorization.replace('Bearer', '').trim();
 
   try {
     const data = jwt.verify(token, env.JWT_SECRET);

@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { FeedbackController } from '../controllers/FeedbackController';
 import { authMiddleware, adminMiddleware } from '../middlewares/auth';
-import { body } from 'express-validator';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { body } = require('express-validator');
 
 const router = Router();
 const feedbackController = new FeedbackController();
