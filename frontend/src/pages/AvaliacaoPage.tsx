@@ -1,7 +1,7 @@
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useFeedback } from '../contexts/FeedBackContext';
-import { departments } from '../constants/departments';
+import { departments, Department } from '../constants/department';
 import otimoSvg from '../assets/otimo.svg.svg';
 import bomSvg from '../assets/bom.svg.svg';
 import regularSvg from '../assets/regular.svg.svg';
@@ -110,8 +110,8 @@ const AvaliacaoPage = () => {
   const [clickedRating, setClickedRating] = useState<Rating | null>(null);
   const [dots, setDots] = useState('');
 
-  const currentDepartment = departments.find((d: any) => d.id === departmentId);
-  const currentIndex = departments.findIndex((d: any) => d.id === departmentId);
+  const currentDepartment = departments.find((d: Department) => d.id === departmentId);
+  const currentIndex = departments.findIndex((d: Department) => d.id === departmentId);
   const nextDepartment = departments[currentIndex + 1];
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import { useFeedback } from '../contexts/FeedBackContext';
-import { departments } from '../../../backend/src/constants/department';
+import { departments } from '../constants/department';
 import * as ExcelJS from 'exceljs';
 import Papa from 'papaparse';
 import jsPDF from 'jspdf';
