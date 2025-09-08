@@ -1,4 +1,6 @@
 process.env.DATABASE_URL = 'postgres://user:pass@localhost:5432/testdb';
+process.env.JWT_SECRET = 'testsecret';
+process.env.JWT_EXPIRES_IN = '1d';
 import request from 'supertest';
 import express from 'express';
 import feedbackRoutes from '../src/routes/feedback';
@@ -25,8 +27,8 @@ describe('POST /api/feedback', () => {
   it('creates feedback when valid', async () => {
     const res = await request(app)
       .post('/api/feedback')
-      .send({ department: 'Recepção', rating: 'Bom' });
+      .send({ departmentId: 'recepcao', rating: 'Bom' });
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ department: 'Recepção', rating: 'Bom' });
+    expect(res.body).toMatchObject({ department: { id: 'recepcao' }, rating: 'Bom' });
   });
 });

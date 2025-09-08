@@ -34,12 +34,12 @@ router.get('/export/excel', authMiddleware, adminMiddleware, async (req, res) =>
   sheet.getCell(`A${row}`).value = 'Feedbacks por Departamento';
   sheet.getCell(`A${row}`).font = { bold: true };
   row++;
-  const departamentos = Array.from(new Set(feedbacks.map(f => f.department)));
+  const departamentos = Array.from(new Set(feedbacks.map(f => f.department.name)));
   for (const dep of departamentos) {
     sheet.getCell(`A${row}`).value = dep;
     sheet.getCell(`A${row}`).font = { bold: true, color: { argb: 'FF19984B' } };
     row++;
-    feedbacks.filter(f => f.department === dep).forEach(fb => {
+    feedbacks.filter(f => f.department.name === dep).forEach(fb => {
       sheet.getCell(`A${row}`).value = new Date(fb.createdAt).toLocaleString('pt-BR');
       sheet.getCell(`B${row}`).value = fb.rating;
       row++;

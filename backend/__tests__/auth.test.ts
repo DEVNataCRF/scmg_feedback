@@ -18,11 +18,12 @@ jest.mock('../src/config/database', () => {
   const { User } = require('../src/models/User');
   const { Feedback } = require('../src/models/Feedback');
   const { Suggestion } = require('../src/models/Suggestion');
+  const { Department } = require('../src/models/Department');
   const ds = new DataSource({
     type: 'sqlite',
     database: ':memory:',
     synchronize: true,
-    entities: [User, Feedback, Suggestion],
+    entities: [User, Feedback, Suggestion, Department],
   });
   return { AppDataSource: ds };
 });
