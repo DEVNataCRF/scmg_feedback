@@ -7,7 +7,7 @@ import Papa from 'papaparse';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useNavigate } from 'react-router-dom';
-import { getSuggestions } from '../services/api';
+import { getSuggestions, registerUser, changePassword } from '../services/api';
 import { FiUser, FiMail, FiLock, FiX } from 'react-icons/fi';
 import { saveAs } from 'file-saver';
 
@@ -798,28 +798,18 @@ const AdminDashboard: React.FC = () => {
     }
     setRegisterLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ name: nomeNovo, email: emailNovo, password: senhaNovo })
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setRegisterMsg(data?.error || data?.message || 'Erro ao cadastrar usuário.');
-      } else {
-        setRegisterMsg('Usuário cadastrado com sucesso!');
-        setNomeNovo(''); setEmailNovo(''); setSenhaNovo(''); setConfirmaSenhaNovo('');
-        setTimeout(() => {
-          setShowRegister(false);
-          setRegisterMsg('');
-        }, 1500);
-      }
+      await registerUser(nomeNovo, emailNovo, senhaNovo);
+      setRegisterMsg('Usuário cadastrado com sucesso!');
+      setNomeNovo('');
+      setEmailNovo('');
+      setSenhaNovo('');
+      setConfirmaSenhaNovo('');
+      setTimeout(() => {
+        setShowRegister(false);
+        setRegisterMsg('');
+      }, 1500);
     } catch (err: any) {
-      setRegisterMsg('Erro ao cadastrar usuário.');
+      setRegisterMsg(err.message || 'Erro ao cadastrar usuário.');
     } finally {
       setRegisterLoading(false);
     }
@@ -878,28 +868,17 @@ const AdminDashboard: React.FC = () => {
     }
     setChangeUserLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/auth/change-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ email: changeUserEmail, novaSenha: changeUserNewPassword })
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setChangeUserMsg(data?.error || data?.message || 'Erro ao alterar senha.');
-      } else {
-        setChangeUserMsg('Senha alterada com sucesso!');
-        setChangeUserEmail(''); setChangeUserNewPassword(''); setChangeUserConfirmPassword('');
-        setTimeout(() => {
-          setShowChangeUserPassword(false);
-          setChangeUserMsg('');
-        }, 1500);
-      }
+      await changePassword(changeUserEmail, changeUserNewPassword);
+      setChangeUserMsg('Senha alterada com sucesso!');
+      setChangeUserEmail('');
+      setChangeUserNewPassword('');
+      setChangeUserConfirmPassword('');
+      setTimeout(() => {
+        setShowChangeUserPassword(false);
+        setChangeUserMsg('');
+      }, 1500);
     } catch (err: any) {
-      setChangeUserMsg('Erro ao alterar senha.');
+      setChangeUserMsg(err.message || 'Erro ao alterar senha.');
     } finally {
       setChangeUserLoading(false);
     }

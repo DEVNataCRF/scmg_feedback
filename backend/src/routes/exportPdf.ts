@@ -1,3 +1,4 @@
+// backend/src/routes/exportPdf.ts
 import express from 'express';
 import PDFDocument from 'pdfkit';
 import { AppDataSource } from '../config/database';
@@ -55,7 +56,7 @@ router.get('/export/pdf', authMiddleware, adminMiddleware, async (req, res) => {
     // Data
     doc.fillColor('#222').fontSize(11).text(new Date(fb.createdAt).toLocaleString('pt-BR'), startX + 8, y + 6, { width: colWidths[0] - 8 });
     // Departamento
-    doc.text(fb.department, startX + colWidths[0] + 8, y + 6, { width: colWidths[1] - 8 });
+    doc.text(fb.department.name, startX + colWidths[0] + 8, y + 6, { width: colWidths[1] - 8 });
     // Badge Avaliação
     const badgeColor = getBadgeColor(fb.rating);
     doc.roundedRect(startX + colWidths[0] + colWidths[1] + 8, y + 6, 60, 14, 4).fillAndStroke(badgeColor, badgeColor);
@@ -108,4 +109,4 @@ router.get('/export/pdf', authMiddleware, adminMiddleware, async (req, res) => {
   doc.end();
 });
 
-export default router; 
+export default router;

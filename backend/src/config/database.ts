@@ -1,30 +1,28 @@
+// backend/src/config/database.ts
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
+
 import { User } from '../models/User';
 import { Feedback } from '../models/Feedback';
 import { Suggestion } from '../models/Suggestion';
-import { env } from './env';
+import { Department } from '../models/Department';
 
-const commonOptions = {
-  entities: [User, Feedback, Suggestion],
-  subscribers: [],
-  migrations: [],
-  synchronize: true,
-  logging: false,
-};
+import { AddSuggestionToFeedback1747321795528 } from '../migrations/1747321795528-addSuggestionToFeedback';
+
+const isProduction = process.env.NODE_ENV === 'production';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: env.DB_HOST,
-  port: parseInt(env.DB_PORT),
-  username: env.DB_USER,
-  password: env.DB_PASS,
-  database: env.DB_NAME,
-  poolSize: 20,
-  maxQueryExecutionTime: 1000,
-  extra: {
-    statement_timeout: 30000,
-    idle_in_transaction_session_timeout: 30000,
-  },
-  ...commonOptions,
-}); 
+  url: process.env.DATABASE_URL, // conexão completa
+  // Em produção o ideal é NÃO sincronizar automaticamente
+  // (evita alterações de schema não intencionais):
+  synchronize: !isProduction,
+  logging: false,
+
+  entities: [User, Feedback, Suggestion, Department],
+  migrations: [AddSuggestionToFeedback1747321795528],
+
+  // No Render/hosts gerenciados geralmente é necessário SSL.
+  // Mantemos rejectUnauthorized:false para compatibilidade.
+  ssl: isProduction ? { rejectUnauthorized: false } : false,
+});

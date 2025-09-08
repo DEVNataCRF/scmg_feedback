@@ -20,11 +20,7 @@ Crie um arquivo `.env` baseado em `.env.example`:
 
 ```
 PORT=3001
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASS=sua_senha
-DB_NAME=scmg
+DATABASE_URL=postgres://usuario:senha@localhost:5432/scmg
 JWT_SECRET=sua_chave_secreta
 JWT_EXPIRES_IN=1d
 ```

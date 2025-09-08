@@ -9,7 +9,7 @@ const feedbackController = new FeedbackController();
 router.post(
   '/',
   [
-    body('department').isString().trim().escape().notEmpty().withMessage('Departamento é obrigatório'),
+    body('departmentId').isString().trim().escape().notEmpty().withMessage('Departamento é obrigatório'),
     body('rating').isString().trim().escape().notEmpty().withMessage('Avaliação é obrigatória'),
     body('suggestion').optional().isString().trim(),
     body('recomendacao')
