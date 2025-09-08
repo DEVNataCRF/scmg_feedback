@@ -2,7 +2,7 @@
 export default {
   testEnvironment: "node",
   transform: {
-    "^.+\.tsx?$": ["ts-jest",{}],
+    "^.+\.tsx?$": ["ts-jest", { tsconfig: "backend/tsconfig.json" }],
   },
   setupFiles: ['jest-localstorage-mock'],
 };

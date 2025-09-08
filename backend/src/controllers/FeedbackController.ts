@@ -6,18 +6,18 @@ import logger from '../config/logger';
 export class FeedbackController {
   async create(req: Request, res: Response) {
     try {
-      const { department, rating, suggestion, recomendacao } = req.body;
-      if (!department || !rating) {
+      const { departmentId, rating, suggestion, recomendacao } = req.body;
+      if (!departmentId || !rating) {
         return res.status(400).json({ error: 'Departamento e avaliação são obrigatórios.' });
       }
       const userId = req.user?.id;
 
-      logger.info('Recebendo novo feedback', { department, rating, userId, recomendacao });
+      logger.info('Recebendo novo feedback', { departmentId, rating, userId, recomendacao });
 
       const feedbackRepository = AppDataSource.getRepository(Feedback);
 
       const feedbackData: any = {
-        department,
+        department: { id: departmentId },
         rating,
       };
       if (userId) {
@@ -61,15 +61,17 @@ export class FeedbackController {
       let query = feedbackRepository
         .createQueryBuilder('feedback')
         .leftJoinAndSelect('feedback.user', 'user')
+        .leftJoinAndSelect('feedback.department', 'department')
         .select([
           'feedback.id',
-          'feedback.department',
           'feedback.rating',
           'feedback.createdAt',
           'feedback.suggestion',
           'feedback.recomendacao',
           'user.id',
           'user.name',
+          'department.id',
+          'department.name',
         ]);
 
       if (month && year) {
