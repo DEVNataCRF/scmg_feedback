@@ -35,8 +35,8 @@ coverage/
 backups/
 
 # Ambiente
-.env
-# .env.*
+.env*
+!**/.env.example
 
 # Sistema
 .DS_Store
