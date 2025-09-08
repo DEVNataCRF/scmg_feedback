@@ -13,8 +13,8 @@
 ## Feedback
 - **POST** `/api/feedback` — Criar feedback
   - Header: `Authorization: Bearer <token>`
-  - Body: `{ "department": "...", "rating": "Excelente|Bom|Regular|Ruim" }`
-  - Resposta: `{ "id": "...", "department": "...", "rating": "...", ... }`
+  - Body: `{ "departmentId": "...", "rating": "Excelente|Bom|Regular|Ruim" }`
+  - Resposta: `{ "id": "...", "department": { "id": "...", "name": "..." }, "rating": "...", ... }`
 
 - **GET** `/api/feedback` — Listar feedbacks (admin)
   - Header: `Authorization: Bearer <token_admin>`

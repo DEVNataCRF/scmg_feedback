@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from './User';
+import { Department } from './Department';
 
 export type Rating = 'Excelente' | 'Bom' | 'Regular' | 'Ruim';
 
@@ -10,9 +11,10 @@ export class Feedback {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column()
+  @ManyToOne(() => Department, { eager: true })
+  @JoinColumn({ name: 'department_id' })
   @Index()
-  department!: string;
+  department!: Department;
 
   @Column({
     type: process.env.NODE_ENV === 'test' ? 'text' : 'enum',
