@@ -1,9 +1,11 @@
+// backend/src/routes/exportPdf.ts
 import express from 'express';
 import PDFDocument from 'pdfkit';
 import { AppDataSource } from '../config/database';
 import { Feedback } from '../models/Feedback';
 import { Suggestion } from '../models/Suggestion';
 import { authMiddleware, adminMiddleware } from '../middlewares/auth';
+
 const router = express.Router();
 
 function getBadgeColor(status: string) {
@@ -107,4 +109,4 @@ router.get('/export/pdf', authMiddleware, adminMiddleware, async (req, res) => {
   doc.end();
 });
 
-export default router; 
+export default router;
