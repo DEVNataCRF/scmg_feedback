@@ -5,6 +5,7 @@ import { User } from '../models/User';
 async function initDb() {
   try {
     await AppDataSource.initialize();
+    await AppDataSource.runMigrations();
 
     const userRepository = AppDataSource.getRepository(User);
 
@@ -30,4 +31,4 @@ async function initDb() {
   }
 }
 
-initDb(); 
+initDb();

@@ -12,6 +12,9 @@ const PORT = parseInt(env.PORT || '3000');
   try {
     console.log('🌐 Iniciando conexão com o banco...');
     await AppDataSource.initialize();
+    if (process.env.NODE_ENV === 'production') {
+      await AppDataSource.runMigrations();
+    }
     console.log('✅ Conectado ao banco com sucesso!');
 
     app.listen(PORT, () => {
