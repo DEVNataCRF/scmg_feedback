@@ -20,7 +20,6 @@
     "react-dom": "^18.2.0",
     "react-icons": "^5.5.0",
     "react-router-dom": "^6.22.3",
-    "scmg": "file:",
     "serve": "^14.2.4",
     "styled-components": "^6.1.8",
     "zod": "^3.24.4"
