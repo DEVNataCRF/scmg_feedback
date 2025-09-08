@@ -88,4 +88,45 @@ export const getSuggestions = async (): Promise<any[]> => {
   }
   const data = await response.json();
   return data.suggestions || [];
-}; 
+};
+
+export const registerUser = async (
+  name: string,
+  email: string,
+  password: string
+): Promise<any> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ name, email, password }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || data.message || `Erro HTTP ${response.status}`);
+  }
+  return data;
+};
+
+export const changePassword = async (
+  email: string,
+  novaSenha: string
+): Promise<any> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/api/auth/change-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ email, novaSenha }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || data.message || `Erro HTTP ${response.status}`);
+  }
+  return data;
+};
