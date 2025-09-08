@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/AuthController';
-import { authMiddleware } from '../middlewares/auth';
+import { authMiddleware, adminMiddleware } from '../middlewares/auth';
 import rateLimit from 'express-rate-limit';
-import { adminMiddleware } from '../middlewares/auth';
 
 const router = Router();
 const authController = new AuthController();
@@ -14,8 +13,8 @@ const loginLimiter = rateLimit({
   message: 'Muitas tentativas de login. Tente novamente em 15 minutos.'
 });
 
-router.post('/register', authMiddleware, adminMiddleware, authController.register);
-router.post('/login', loginLimiter, authController.login);
-router.post('/change-password', authController.changePassword);
+  router.post('/register', authMiddleware, adminMiddleware, authController.register);
+  router.post('/login', loginLimiter, authController.login);
+  router.post('/change-password', authMiddleware, authController.changePassword);
 
 export default router; 

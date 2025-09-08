@@ -73,70 +73,34 @@ export class AuthController {
 
   async changePassword(req: Request, res: Response) {
     try {
-      // Processar token manualmente para popular req.user
-      const authHeader = req.headers['authorization'];
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        try {
-          const token = authHeader.replace('Bearer ', '').trim();
-          const data = jwt.verify(token, env.JWT_SECRET);
-          const { id } = data as any;
-          const userRepository = AppDataSource.getRepository(User);
-          const adminUser = await userRepository.findOne({ where: { id } });
-          if (adminUser) {
-            req.user = adminUser;
-          }
-        } catch (err) {
-          // Token inválido, segue fluxo sem req.user
-        }
-      }
       const { email, senhaAtual, novaSenha } = req.body;
       const userRepository = AppDataSource.getRepository(User);
       const user = await userRepository.findOne({ where: { email } });
       if (!user) {
         return res.status(400).json({ error: 'Usuário não encontrado' });
       }
-      // Se for admin logado, pode trocar a senha de qualquer usuário
-      if (req.user && req.user.isAdmin && (!senhaAtual || senhaAtual === '')) {
+      if (req.user.isAdmin) {
         user.password = novaSenha;
         await user.hashPassword();
         user.passwordChangeCount = (user.passwordChangeCount || 0) + 1;
         await userRepository.save(user);
         return res.json({ message: 'Senha alterada com sucesso (admin).' });
       }
-      // Se for o próprio usuário autenticado, só permite a primeira troca
-      if (req.user && req.user.id === user.id) {
-        if ((user.passwordChangeCount || 0) >= 1) {
-          return res.status(403).json({ error: 'Apenas administradores podem alterar a senha novamente.' });
-        }
-        const isValidPassword = await user.checkPassword(senhaAtual);
-        if (!isValidPassword) {
-          return res.status(400).json({ error: 'Senha atual inválida.' });
-        }
-        user.password = novaSenha;
-        await user.hashPassword();
-        user.passwordChangeCount = (user.passwordChangeCount || 0) + 1;
-        await userRepository.save(user);
-        return res.json({ message: 'Senha alterada com sucesso.' });
+      if (req.user.id !== user.id) {
+        return res.status(403).json({ error: 'Acesso negado.' });
       }
-      // Se não estiver autenticado, permite a primeira troca para não-admins
-      if (!req.user) {
-        if (user.isAdmin) {
-          return res.status(403).json({ error: 'Apenas administradores autenticados podem alterar a senha de admin.' });
-        }
-        if ((user.passwordChangeCount || 0) >= 1) {
-          return res.status(403).json({ error: 'Apenas administradores podem alterar a senha novamente.' });
-        }
-        const isValidPassword = await user.checkPassword(senhaAtual);
-        if (!isValidPassword) {
-          return res.status(400).json({ error: 'Senha atual inválida.' });
-        }
-        user.password = novaSenha;
-        await user.hashPassword();
-        user.passwordChangeCount = (user.passwordChangeCount || 0) + 1;
-        await userRepository.save(user);
-        return res.json({ message: 'Senha alterada com sucesso.' });
+      if ((user.passwordChangeCount || 0) >= 1) {
+        return res.status(403).json({ error: 'Apenas administradores podem alterar a senha novamente.' });
       }
-      return res.status(403).json({ error: 'Acesso negado.' });
+      const isValidPassword = await user.checkPassword(senhaAtual);
+      if (!isValidPassword) {
+        return res.status(400).json({ error: 'Senha atual inválida.' });
+      }
+      user.password = novaSenha;
+      await user.hashPassword();
+      user.passwordChangeCount = (user.passwordChangeCount || 0) + 1;
+      await userRepository.save(user);
+      return res.json({ message: 'Senha alterada com sucesso.' });
     } catch (error) {
       logger.error('Erro interno ao tentar alterar senha', { email: req.body?.email, error });
       return res.status(500).json({ error: 'Erro interno do servidor' });
